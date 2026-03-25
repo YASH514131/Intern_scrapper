@@ -1,0 +1,34 @@
+# Global
+.DS_Store
+Thumbs.db
+*.log
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Dart/Flutter generated
+**/.dart_tool/
+**/build/
+**/.packages
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/pubspec_overrides.yaml
+
+# Flutter platform generated artifacts
+**/android/.gradle/
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.*
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/macos/Pods/
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# Misc
+**/*.iml
