@@ -5,22 +5,17 @@ import 'package:csv/csv.dart';
 import 'package:excel/excel.dart' as xls;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/company_row.dart';
+import '../services/analytics_service.dart';
+import '../services/company_repository.dart';
+import '../services/home_widget_service.dart';
 import '../services/nexus_api_client.dart';
 
 class ScanController extends ChangeNotifier {
   ScanController() {
-    unawaited(_loadProfilePrefs());
+    unawaited(_bootstrapCompanyRepository());
   }
-
-  static const String _prefResumeText = 'nexus.profile.resumeText';
-  static const String _prefSkills = 'nexus.profile.skills';
-  static const String _prefRoles = 'nexus.profile.roles';
-  static const String _prefLocations = 'nexus.profile.locations';
-  static const String _prefGradYear = 'nexus.profile.gradYear';
-  static const String _prefEligible = 'nexus.profile.eligible';
 
   bool isDarkMode = true;
   bool isScanning = false;
@@ -30,15 +25,8 @@ class ScanController extends ChangeNotifier {
   String keywords = 'intern, internship, trainee, co-op, apprentice';
   String excludes = 'senior, staff, director, manager, principal';
   int maxDuration = 6;
-  int scanLimit = 20;
-  int workers = 1;
-
-  String resumeText = '';
-  String profileSkillsInput = 'dart, flutter, api, sql';
-  String preferredRolesInput = 'software, backend, mobile, blockchain';
-  String preferredLocationsInput = 'remote, bengaluru';
-  String graduationYearInput = '';
-  bool eligibleForWork = true;
+  int scanLimit = 239;
+  int workers = 10;
 
   List<CompanyRow> uploadedCompanies = <CompanyRow>[];
   List<ScanResultRow> allResults = <ScanResultRow>[];
@@ -54,16 +42,23 @@ class ScanController extends ChangeNotifier {
   int errorCount = 0;
   int newOpenings = 0;
   int activeStep = 1;
+  int previousStep = 1;
+  bool scanTabBlinkOn = false;
   List<AppAlert> alerts = <AppAlert>[];
 
   String? _runId;
   int _lastEventIndex = -1;
   Timer? _pollTimer;
+  Timer? _scanTabBlinkTimer;
+  int _scanTabBlinkTicks = 0;
   int _lastNewAlertCount = 0;
   int _lastErrorAlertCount = 0;
   bool _completionAlertShown = false;
+  final CompanyRepository _companyRepository = CompanyRepository();
 
   String? get runId => _runId;
+  int get maxScanLimit =>
+      uploadedCompanies.isEmpty ? 239 : uploadedCompanies.length.clamp(1, 5000);
 
   void setApiUrl(String value) {
     apiUrl = value;
@@ -86,68 +81,49 @@ class ScanController extends ChangeNotifier {
   }
 
   void setScanLimit(double value) {
-    scanLimit = value.toInt();
+    final next = value.toInt();
+    scanLimit = next.clamp(1, maxScanLimit);
     notifyListeners();
   }
 
   void setWorkers(double value) {
-    workers = value.toInt();
+    workers = value.toInt().clamp(1, 10);
     notifyListeners();
   }
 
-  void setResumeText(String value) {
-    resumeText = value;
-    unawaited(_saveProfilePrefs());
+  void setActiveStep(int step) {
+    final clamped = step.clamp(1, 3).toInt();
+    if (activeStep == clamped) return;
+    previousStep = activeStep;
+    activeStep = clamped;
     notifyListeners();
-  }
-
-  void setProfileSkillsInput(String value) {
-    profileSkillsInput = value;
-    unawaited(_saveProfilePrefs());
-    notifyListeners();
-  }
-
-  void setPreferredRolesInput(String value) {
-    preferredRolesInput = value;
-    unawaited(_saveProfilePrefs());
-    notifyListeners();
-  }
-
-  void setPreferredLocationsInput(String value) {
-    preferredLocationsInput = value;
-    unawaited(_saveProfilePrefs());
-    notifyListeners();
-  }
-
-  void setGraduationYearInput(String value) {
-    graduationYearInput = value;
-    unawaited(_saveProfilePrefs());
-    notifyListeners();
-  }
-
-  void setEligibleForWork(bool value) {
-    eligibleForWork = value;
-    unawaited(_saveProfilePrefs());
-    notifyListeners();
-  }
-
-  Future<void> pickResumeFile() async {
-    final picked = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['txt', 'md', 'doc', 'docx', 'pdf'],
-      withData: true,
-    );
-    if (picked == null || picked.files.single.bytes == null) return;
-    final bytes = picked.files.single.bytes!;
-    resumeText = utf8.decode(bytes, allowMalformed: true).trim();
-    unawaited(_saveProfilePrefs());
-    notifyListeners();
+    unawaited(AnalyticsService.instance.logStageViewed(_stageName(clamped)));
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _scanTabBlinkTimer?.cancel();
     super.dispose();
+  }
+
+  void startScanTabBlink({int cycles = 6}) {
+    _scanTabBlinkTimer?.cancel();
+    _scanTabBlinkTicks = 0;
+    scanTabBlinkOn = true;
+    notifyListeners();
+    _scanTabBlinkTimer = Timer.periodic(const Duration(milliseconds: 300), (
+      timer,
+    ) {
+      _scanTabBlinkTicks++;
+      scanTabBlinkOn = !scanTabBlinkOn;
+      notifyListeners();
+      if (_scanTabBlinkTicks >= cycles * 2) {
+        timer.cancel();
+        scanTabBlinkOn = false;
+        notifyListeners();
+      }
+    });
   }
 
   void toggleTheme() {
@@ -165,23 +141,39 @@ class ScanController extends ChangeNotifier {
 
     final file = picked.files.single;
     final bytes = file.bytes!;
-    if ((file.extension ?? '').toLowerCase() == 'csv') {
-      uploadedCompanies = _parseCsv(bytes);
-    } else {
-      uploadedCompanies = _parseExcel(bytes);
-    }
+    final parsed = (file.extension ?? '').toLowerCase() == 'csv'
+        ? _parseCsv(bytes)
+        : _parseExcel(bytes);
 
-    activeStep = uploadedCompanies.isEmpty ? 1 : 2;
+    final updates = <String, String>{
+      for (final c in parsed)
+        if (c.name.trim().isNotEmpty && c.url.trim().isNotEmpty)
+          c.name.trim(): c.url.trim(),
+    };
+    await _companyRepository.merge(updates);
+    await _reloadCompaniesFromRepository();
+
+    activeStep = 1;
+    // Keep configure defaults pinned to max when a new company list is loaded.
+    scanLimit = maxScanLimit;
+    workers = 10;
+    unawaited(
+      AnalyticsService.instance.logCompaniesUploaded(
+        count: uploadedCompanies.length,
+        fileType: (file.extension ?? '').toLowerCase(),
+      ),
+    );
+    unawaited(AnalyticsService.instance.logStageViewed(_stageName(activeStep)));
     notifyListeners();
   }
 
   Future<void> startScan() async {
-    if (uploadedCompanies.isEmpty) return;
+    if (uploadedCompanies.isEmpty || isScanning) return;
 
     final client = NexusApiClient(apiUrl.trim());
     isScanning = true;
     appStatus = 'queued';
-    activeStep = 3;
+    activeStep = 2;
     logLines = <Map<String, dynamic>>[];
     allResults = <ScanResultRow>[];
     metrics = <String, dynamic>{};
@@ -197,10 +189,18 @@ class ScanController extends ChangeNotifier {
     scanTargets = uploadedCompanies.take(scanLimit).map((e) => e.name).toList();
     companyStatus = {for (final c in scanTargets) _key(c): 'pending'};
     currentCompanyUrl = '';
-    _appendLog(
-      kind: 'info',
-      message: r'$ starting scan (sequential mode: 1 worker)',
+    _appendLog(kind: 'info', message: '\$ starting scan (workers: $workers)');
+    if (scanTargets.isNotEmpty) {
+      unawaited(AnalyticsService.instance.logScanStarted(scanTargets.first));
+    }
+    unawaited(
+      AnalyticsService.instance.logConfigurationUpdated(
+        workers: workers,
+        maxDuration: maxDuration,
+        scanLimit: scanLimit,
+      ),
     );
+    unawaited(AnalyticsService.instance.logStageViewed(_stageName(activeStep)));
     notifyListeners();
 
     try {
@@ -209,7 +209,7 @@ class ScanController extends ChangeNotifier {
         keywords: keywords,
         excludes: excludes,
         scanLimit: scanLimit,
-        concurrency: 1,
+        concurrency: workers.clamp(1, 10),
         maxDuration: maxDuration,
       );
 
@@ -250,6 +250,9 @@ class ScanController extends ChangeNotifier {
         _applyCompanyEvent(e);
       }
       logLines = <Map<String, dynamic>>[...logLines, ...incoming];
+      if (logLines.length > 500) {
+        logLines = logLines.sublist(logLines.length - 500);
+      }
       appStatus = (eventsBody['status'] ?? appStatus).toString();
 
       final resultsBody = await client.fetchResults(runId);
@@ -257,7 +260,6 @@ class ScanController extends ChangeNotifier {
           (resultsBody['results'] as List<dynamic>? ?? const [])
               .whereType<Map<String, dynamic>>()
               .toList();
-      _applyRoleFitScoring(scoredResults);
       allResults = scoredResults.map((e) => ScanResultRow(raw: e)).toList();
       metrics =
           resultsBody['metrics'] as Map<String, dynamic>? ??
@@ -279,13 +281,28 @@ class ScanController extends ChangeNotifier {
 
       if (appStatus == 'complete' || appStatus == 'failed') {
         isScanning = false;
-        activeStep = 4;
+        activeStep = 3;
         _pollTimer?.cancel();
+        if (appStatus == 'complete') {
+          unawaited(
+            AnalyticsService.instance.logScanCompleted(
+              hits: hits.length,
+              errors: errors.length,
+              misses: misses.length,
+              newOpenings: newOpenings,
+            ),
+          );
+          unawaited(AnalyticsService.instance.logStageViewed('results'));
+          unawaited(refreshHomeWidgetCounts());
+        } else {
+          unawaited(AnalyticsService.instance.logScanFailed('status_failed'));
+        }
       }
       notifyListeners();
     } catch (e) {
       isScanning = false;
       appStatus = 'failed';
+      unawaited(AnalyticsService.instance.logScanFailed('poll_exception'));
       _appendLog(
         kind: 'error',
         message: '[system] polling failed: ${_friendlyNetworkError(e)}',
@@ -481,6 +498,9 @@ class ScanController extends ChangeNotifier {
         'timestamp': DateTime.now().toIso8601String(),
       },
     ];
+    if (logLines.length > 500) {
+      logLines = logLines.sublist(logLines.length - 500);
+    }
   }
 
   String? _extractCompany(String message) {
@@ -569,160 +589,60 @@ class ScanController extends ChangeNotifier {
     ];
   }
 
-  void _applyRoleFitScoring(List<Map<String, dynamic>> rows) {
-    final skillTokens = _tokenize(profileSkillsInput);
-    final roleTokens = _tokenize(preferredRolesInput);
-    final locationTokens = _tokenize(preferredLocationsInput);
-    final resumeTokens = _tokenize(resumeText);
-    final gradYear = int.tryParse(graduationYearInput.trim());
-
-    for (final row in rows) {
-      if ((row['bucket'] ?? '').toString() != 'hit') {
-        row['fitScore'] = 0;
-        row['fitLabel'] = 'N/A';
-        row['eligibilityIssue'] = false;
-        row['scoreWhy'] = <String>[
-          'Scoring available for internship hits only.',
-        ];
-        continue;
-      }
-
-      final title = (row['title'] ?? '').toString().toLowerCase();
-      final company = (row['company'] ?? '').toString().toLowerCase();
-      final source = (row['source'] ?? '').toString().toLowerCase();
-      final location = (row['location'] ?? '').toString().toLowerCase();
-      final text = '$title $company $source $location';
-
-      final skillMatch = _ratioMatch(skillTokens, text);
-      final roleMatch = _ratioMatch(roleTokens, title.isEmpty ? text : title);
-      final locationMatch = locationTokens.isEmpty
-          ? 0.8
-          : _ratioMatch(locationTokens, location);
-
-      double eligibility = 1.0;
-      final why = <String>[];
-      if (!eligibleForWork) {
-        eligibility = 0.15;
-        why.add('Eligibility concern: work authorization marked unavailable.');
-      }
-      if (gradYear != null && gradYear < DateTime.now().year - 3) {
-        eligibility = (eligibility - 0.2).clamp(0.0, 1.0);
-        why.add('Older graduation year may reduce internship eligibility fit.');
-      }
-      if (title.contains('senior') || title.contains('staff')) {
-        eligibility = (eligibility - 0.55).clamp(0.0, 1.0);
-        why.add('Role appears senior-level vs internship target.');
-      }
-      final eligibilityIssue = eligibility < 0.3;
-
-      final resumeSkillCoverage = skillTokens.isEmpty
-          ? 0.0
-          : _ratioSetCoverage(skillTokens, resumeTokens);
-      final prefsBonus =
-          ((row['isNew'] == true ? 1.0 : 0.0) * 0.6) +
-          (source.contains('greenhouse') ||
-                  source.contains('lever') ||
-                  source.contains('ashby')
-              ? 0.4
-              : 0.0);
-
-      var score =
-          (40 * skillMatch) +
-          (20 * roleMatch) +
-          (15 * locationMatch) +
-          (20 * eligibility) +
-          (5 * prefsBonus);
-
-      if (eligibilityIssue) {
-        score = score > 35 ? 35 : score;
-      }
-
-      final rounded = score.round().clamp(0, 100);
-      row['fitScore'] = rounded;
-      row['fitLabel'] = rounded >= 85
-          ? 'Excellent fit'
-          : rounded >= 70
-          ? 'Strong fit'
-          : rounded >= 50
-          ? 'Moderate fit'
-          : 'Low fit';
-      row['eligibilityIssue'] = eligibilityIssue;
-
-      final matchedSkills = skillTokens
-          .where((t) => t.isNotEmpty && text.contains(t))
-          .toList(growable: false);
-      final missingSkills = skillTokens
-          .where((t) => t.isNotEmpty && !text.contains(t))
-          .take(4)
-          .toList(growable: false);
-
-      why.add(
-        'Skill match: ${(skillMatch * 100).round()}% (${matchedSkills.isEmpty ? 'no direct skill terms found' : 'matched ${matchedSkills.join(', ')}'}).',
-      );
-      why.add('Role relevance: ${(roleMatch * 100).round()}%.');
-      why.add('Location fit: ${(locationMatch * 100).round()}%.');
-      why.add(
-        'Resume overlap with profile skills: ${(resumeSkillCoverage * 100).round()}%.',
-      );
-      if (missingSkills.isNotEmpty) {
-        why.add(
-          'Missing keywords to improve fit: ${missingSkills.join(', ')}.',
-        );
-      }
-
-      row['scoreWhy'] = why;
-    }
-  }
-
-  Future<void> _loadProfilePrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    resumeText = prefs.getString(_prefResumeText) ?? resumeText;
-    profileSkillsInput = prefs.getString(_prefSkills) ?? profileSkillsInput;
-    preferredRolesInput = prefs.getString(_prefRoles) ?? preferredRolesInput;
-    preferredLocationsInput =
-        prefs.getString(_prefLocations) ?? preferredLocationsInput;
-    graduationYearInput = prefs.getString(_prefGradYear) ?? graduationYearInput;
-    eligibleForWork = prefs.getBool(_prefEligible) ?? eligibleForWork;
+  Future<void> _bootstrapCompanyRepository() async {
+    await _reloadCompaniesFromRepository();
+    scanLimit = maxScanLimit;
+    workers = 10;
+    // Always start in Setup so returning users don't skip the first stage.
+    activeStep = 1;
     notifyListeners();
   }
 
-  Future<void> _saveProfilePrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefResumeText, resumeText);
-    await prefs.setString(_prefSkills, profileSkillsInput);
-    await prefs.setString(_prefRoles, preferredRolesInput);
-    await prefs.setString(_prefLocations, preferredLocationsInput);
-    await prefs.setString(_prefGradYear, graduationYearInput);
-    await prefs.setBool(_prefEligible, eligibleForWork);
+  Future<void> _reloadCompaniesFromRepository() async {
+    final map = await _companyRepository.getAll();
+    final rows =
+        map.entries
+            .map((e) => CompanyRow(name: e.key.trim(), url: e.value.trim()))
+            .where((e) => e.name.isNotEmpty && e.url.isNotEmpty)
+            .toList(growable: false)
+          ..sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
+    uploadedCompanies = rows;
   }
 
-  List<String> _tokenize(String raw) {
-    return raw
-        .toLowerCase()
-        .split(RegExp(r'[,\n;| ]+'))
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty && e.length > 1)
-        .toSet()
-        .toList(growable: false);
+  Future<void> refreshHomeWidgetCounts() async {
+    final seen = (metrics['seenBefore'] as num?)?.toInt() ?? 0;
+    await HomeWidgetService.instance.updateCounts(
+      newCount: newOpenings,
+      seenCount: seen,
+    );
   }
 
-  double _ratioMatch(List<String> tokens, String text) {
-    if (tokens.isEmpty) return 0.0;
-    var hits = 0;
-    for (final t in tokens) {
-      if (text.contains(t)) hits++;
+  Future<void> handleHomeWidgetTap({bool startScanIfRequested = false}) async {
+    if (startScanIfRequested) {
+      startScanTabBlink();
+      setActiveStep(2);
+      if (!isScanning && uploadedCompanies.isNotEmpty) {
+        await startScan();
+      }
+      return;
     }
-    return hits / tokens.length;
+
+    setActiveStep(1);
   }
 
-  double _ratioSetCoverage(List<String> left, List<String> right) {
-    if (left.isEmpty) return 0.0;
-    final r = right.toSet();
-    var hits = 0;
-    for (final t in left) {
-      if (r.contains(t)) hits++;
+  String _stageName(int step) {
+    switch (step) {
+      case 1:
+        return 'setup';
+      case 2:
+        return 'scan';
+      case 3:
+        return 'results';
+      default:
+        return 'setup';
     }
-    return hits / left.length;
   }
 }
 

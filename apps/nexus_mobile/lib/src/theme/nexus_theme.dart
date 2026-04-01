@@ -30,8 +30,8 @@ ThemeData nexusTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(
     brightness: brightness,
-    seedColor: NexusPalette.cyan,
-    primary: NexusPalette.cyan,
+    seedColor: NexusPalette.violet,
+    primary: NexusPalette.violet,
     secondary: NexusPalette.violet,
     error: NexusPalette.rose,
     surface: isDark ? NexusPalette.darkSurface : NexusPalette.lightSurface,
@@ -73,6 +73,8 @@ ThemeData nexusTheme(Brightness brightness) {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: isDark ? NexusPalette.darkPanel : NexusPalette.lightSurface,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       labelStyle: TextStyle(
         color: isDark ? NexusPalette.darkBody : NexusPalette.lightBody,
       ),
@@ -85,15 +87,54 @@ ThemeData nexusTheme(Brightness brightness) {
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(
-          color: isDark ? NexusPalette.darkBorder : NexusPalette.lightBorder,
-        ),
+        borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(
-          color: isDark ? NexusPalette.darkBorder : NexusPalette.lightBorder,
+          color: (isDark ? NexusPalette.darkBorder : NexusPalette.lightBorder)
+              .withValues(alpha: 0.35),
         ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: NexusPalette.violet, width: 1.4),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: NexusPalette.violet,
+        foregroundColor: const Color(0xFF0B0D16),
+        disabledBackgroundColor: isDark
+            ? const Color(0xFF343950)
+            : const Color(0xFFD2D8EE),
+        disabledForegroundColor: isDark
+            ? const Color(0xFF9CA7CC)
+            : const Color(0xFF7C86A8),
+        textStyle: GoogleFonts.dmMono(
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.4,
+          fontSize: 14,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: isDark
+            ? NexusPalette.darkBright
+            : NexusPalette.lightBright,
+        side: BorderSide(
+          color: isDark ? const Color(0xFF343C55) : const Color(0xFFC7D1EE),
+        ),
+        textStyle: GoogleFonts.dmMono(
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.3,
+          fontSize: 14,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
     ),
   );

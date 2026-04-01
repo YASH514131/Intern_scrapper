@@ -21,11 +21,4 @@ class ScanResultRow {
   String get bucket => (raw['bucket'] ?? 'error').toString();
   bool get isNew => raw['isNew'] == true;
   bool get isSeenBefore => raw['isSeenBefore'] == true;
-  int get fitScore => ((raw['fitScore'] as num?) ?? 0).toInt();
-  String get fitLabel => (raw['fitLabel'] ?? '').toString();
-  List<String> get scoreWhy =>
-      (raw['scoreWhy'] as List<dynamic>? ?? const <dynamic>[])
-          .map((e) => e.toString())
-          .toList(growable: false);
-  bool get eligibilityIssue => raw['eligibilityIssue'] == true;
 }

@@ -1,9 +1,12 @@
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -42,8 +45,49 @@ class NexusApp extends StatelessWidget {
   }
 }
 
-class NexusHomePage extends StatelessWidget {
+class NexusHomePage extends StatefulWidget {
   const NexusHomePage({super.key});
+
+  @override
+  State<NexusHomePage> createState() => _NexusHomePageState();
+}
+
+class _NexusHomePageState extends State<NexusHomePage> {
+  StreamSubscription<Uri?>? _widgetClickSub;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _wireHomeWidgetLaunches();
+    });
+  }
+
+  @override
+  void dispose() {
+    _widgetClickSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _wireHomeWidgetLaunches() async {
+    await _handleHomeWidgetUri(
+      await HomeWidget.initiallyLaunchedFromHomeWidget(),
+    );
+    _widgetClickSub ??= HomeWidget.widgetClicked.listen((uri) {
+      unawaited(_handleHomeWidgetUri(uri));
+    });
+  }
+
+  Future<void> _handleHomeWidgetUri(Uri? uri) async {
+    if (!mounted || uri == null) return;
+    final host = uri.host.toLowerCase();
+    final path = uri.path.toLowerCase();
+    final shouldStartScan =
+        host == 'scan' || path.contains('/scan') || path == 'scan';
+    await context.read<ScanController>().handleHomeWidgetTap(
+      startScanIfRequested: shouldStartScan,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,223 +108,685 @@ class NexusHomePage extends StatelessWidget {
         : NexusPalette.lightSurface;
     final border = isDark ? NexusPalette.darkBorder : NexusPalette.lightBorder;
 
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        drawer: _NexusDrawer(state: state),
-        appBar: AppBar(
-          backgroundColor: surface,
-          scrolledUnderElevation: 0,
-          titleSpacing: 8,
-          title: Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: NexusPalette.cyan,
-                  shape: BoxShape.circle,
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        titleSpacing: 8,
+        title: Row(
+          children: [
+            Container(
+              width: 20,
+              height: 20,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: NexusPalette.violet.withValues(alpha: 0.24),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: NexusPalette.violet),
+              ),
+              child: Text(
+                'N',
+                style: GoogleFonts.dmMono(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: NexusPalette.lightBright,
                 ),
               ),
-              const SizedBox(width: 6),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'NEXUS',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.syne(fontWeight: FontWeight.w800),
+              ),
+            ),
+            if (!isCompactTopBar) ...[
+              const SizedBox(width: 10),
               Flexible(
                 child: Text(
-                  '? NEXUS',
+                  '/ Web3 Radar',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.syne(fontWeight: FontWeight.w800),
-                ),
-              ),
-              if (!isCompactTopBar) ...[
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    '/ Web3 Radar',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmMono(
-                      fontSize: 12,
-                      color: NexusPalette.dim,
-                    ),
+                  style: GoogleFonts.dmMono(
+                    fontSize: 13,
+                    color: NexusPalette.dim,
                   ),
                 ),
-              ],
-            ],
-          ),
-          actions: [
-            if (!isCompactTopBar)
-              _Badge(
-                text: state.isScanning ? 'LIVE' : 'IDLE',
-                fg: state.isScanning ? NexusPalette.green : NexusPalette.dim,
               ),
-            if (!isCompactTopBar) const SizedBox(width: 8),
-            if (!isCompactTopBar)
-              const _Badge(text: 'v4.1.0', fg: NexusPalette.cyan),
-            IconButton(
-              onPressed: state.toggleTheme,
-              icon: Icon(state.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-            ),
+            ],
           ],
         ),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: surface,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: border),
+        actions: [
+          if (!isCompactTopBar)
+            _Badge(
+              text: state.isScanning ? 'LIVE' : 'IDLE',
+              fg: state.isScanning ? NexusPalette.green : NexusPalette.dim,
+            ),
+          if (!isCompactTopBar) const SizedBox(width: 8),
+          if (!isCompactTopBar)
+            const _Badge(text: 'v4.1.0', fg: NexusPalette.violet),
+          const SizedBox(width: 4),
+          IconButton(
+            onPressed: state.toggleTheme,
+            icon: Icon(state.isDarkMode ? Icons.light_mode : Icons.dark_mode),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: ColoredBox(
+              color: isDark ? const Color(0xFF04060E) : const Color(0xFFF5F7FB),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(painter: _GridBackdrop(isDark: isDark)),
+            ),
+          ),
+          SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                const SizedBox(height: 8),
+                _StageTabs(
+                  active: state.activeStep,
+                  onTap: state.setActiveStep,
+                  scanBlinkOn: state.scanTabBlinkOn,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'TALENT RADAR - WEB3 EDITION',
-                      style: GoogleFonts.dmMono(
-                        color: NexusPalette.cyan,
-                        fontSize: 12,
-                        letterSpacing: 1.4,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          const TextSpan(text: 'Find every '),
-                          TextSpan(
-                            text: 'open internship',
-                            style: TextStyle(
-                              foreground: Paint()
-                                ..shader =
-                                    const LinearGradient(
-                                      colors: [
-                                        NexusPalette.cyan,
-                                        NexusPalette.violet,
-                                      ],
-                                    ).createShader(
-                                      const Rect.fromLTWH(0, 0, 240, 20),
-                                    ),
-                            ),
-                          ),
-                          const TextSpan(text: ' in Web3.'),
-                        ],
-                      ),
-                      style: GoogleFonts.syne(
-                        color: bright,
-                        fontSize: 30,
-                        height: 1.08,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Upload your company list and NEXUS auto-discovers career pages, runs 3-layer extraction, and returns structured internship results.',
-                      style: TextStyle(color: textColor),
-                    ),
-                    const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 20,
-                      children: const [
-                        _HeroStat(value: '3x', label: 'Detection layers'),
-                        _HeroStat(value: '12', label: 'User-Agent strings'),
-                        _HeroStat(value: '8', label: 'Companies'),
+                const SizedBox(height: 14),
+                GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onHorizontalDragEnd: (details) {
+                    final velocity = details.primaryVelocity ?? 0;
+                    if (velocity < -90 && state.activeStep < 3) {
+                      state.setActiveStep(state.activeStep + 1);
+                    } else if (velocity > 90 && state.activeStep > 1) {
+                      state.setActiveStep(state.activeStep - 1);
+                    }
+                  },
+                  child: TweenAnimationBuilder<double>(
+                    key: ValueKey<int>(state.activeStep),
+                    tween: Tween<double>(begin: 0.97, end: 1.0),
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, child) {
+                      final forward = state.activeStep >= state.previousStep;
+                      final slideFactor = (1 - value) * (forward ? 14 : -14);
+                      return Opacity(
+                        opacity: value,
+                        child: Transform.translate(
+                          offset: Offset(slideFactor, 0),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: IndexedStack(
+                      index: state.activeStep - 1,
+                      children: [
+                        _SetupSection(
+                          key: const ValueKey<int>(1),
+                          state: state,
+                          surface: surface,
+                          border: border,
+                          textColor: textColor,
+                          bright: bright,
+                        ),
+                        _ScanSection(key: const ValueKey<int>(2), state: state),
+                        _ResultsSection(
+                          key: const ValueKey<int>(3),
+                          state: state,
+                          panel: panel,
+                          border: border,
+                          textColor: textColor,
+                          resultsPanelHeight: resultsPanelHeight,
+                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              _StepIndicator(active: state.activeStep),
-              const SizedBox(height: 14),
-              _ActionBar(state: state),
-              const SizedBox(height: 14),
-              _ProfileSetupCard(state: state),
-              const SizedBox(height: 14),
-              _AlertsCard(state: state),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _MetricCard(
-                    label: 'Scanned',
-                    value: '${state.metrics['scanned'] ?? 0}',
-                    color: NexusPalette.cyan,
-                    icon: '?',
-                  ),
-                  _MetricCard(
-                    label: 'Found',
-                    value: '${state.metrics['hits'] ?? 0}',
-                    color: NexusPalette.violet,
-                    icon: '?',
-                  ),
-                  _MetricCard(
-                    label: 'Errors',
-                    value: '${state.metrics['errors'] ?? 0}',
-                    color: NexusPalette.amber,
-                    icon: '?',
-                  ),
-                  _MetricCard(
-                    label: 'New',
-                    value: '${state.newOpenings}',
-                    color: NexusPalette.green,
-                    icon: '+',
-                  ),
-                  _MetricCard(
-                    label: 'Seen',
-                    value: '${state.metrics['seenBefore'] ?? 0}',
-                    color: NexusPalette.dim,
-                    icon: 'S',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              _TrackerCard(state: state),
-              const SizedBox(height: 14),
-              _LiveBrowserCard(state: state),
-              const SizedBox(height: 14),
-              _TerminalCard(state: state),
-              const SizedBox(height: 14),
-              if (state.uploadedCompanies.isEmpty)
-                _FeatureGrid(
-                  panel: panel,
-                  border: border,
-                  textColor: textColor,
-                ),
-              if (state.uploadedCompanies.isNotEmpty) ...[
-                const TabBar(
-                  tabs: [
-                    Tab(text: '? Internships'),
-                    Tab(text: '? No Listings'),
-                    Tab(text: '? Errors'),
-                  ],
-                ),
-                SizedBox(
-                  height: resultsPanelHeight,
-                  child: TabBarView(
-                    children: [
-                      _ResultsList(rows: state.hits, enableSeenFilter: true),
-                      _ResultsList(rows: state.misses),
-                      _ResultsList(rows: state.errors),
-                    ],
                   ),
                 ),
                 const SizedBox(height: 14),
-                _ExportBar(state: state),
-              ],
-              const SizedBox(height: 12),
-              Text(
-                'NEXUS v4.1.0 - Web3 Talent Intelligence � ${DateTime.now()}',
-                style: GoogleFonts.dmMono(
-                  fontSize: 11,
-                  color: NexusPalette.dim,
+                Text(
+                  'NEXUS v4.1.0 - Web3 Talent Intelligence - ${DateTime.now()}',
+                  style: GoogleFonts.dmMono(
+                    fontSize: 11,
+                    color: NexusPalette.dim,
+                  ),
                 ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StageTabs extends StatelessWidget {
+  const _StageTabs({
+    required this.active,
+    required this.onTap,
+    required this.scanBlinkOn,
+  });
+
+  final int active;
+  final ValueChanged<int> onTap;
+  final bool scanBlinkOn;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = active.clamp(1, 3);
+    final shellColor = isDark
+        ? const Color(0xAA111527)
+        : const Color(0xCCEAF0FB);
+    final shellBorder = isDark
+        ? const Color(0xFF313754)
+        : const Color(0xFFC6D0EB);
+    final activeBg = isDark ? const Color(0xFF000000) : const Color(0xFF04060C);
+    final activeBorder = isDark
+        ? const Color(0xFF5E668C)
+        : const Color(0xFFC6D0EE);
+    final activeText = const Color(0xFFEFF3FF);
+    final inactiveText = isDark
+        ? const Color(0xFFCFD6F0)
+        : const Color(0xFF434C69);
+    final labels = ['Setup', 'Scan', 'Results'];
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: shellColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: shellBorder),
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < labels.length; i++) ...[
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => onTap(i + 1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  decoration: BoxDecoration(
+                    color: activeColor == i + 1
+                        ? activeBg
+                        : (i == 1 && scanBlinkOn)
+                        ? NexusPalette.violet.withValues(alpha: 0.14)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    border: activeColor == i + 1 || (i == 1 && scanBlinkOn)
+                        ? Border.all(
+                            color: activeColor == i + 1
+                                ? activeBorder
+                                : NexusPalette.violet.withValues(alpha: 0.8),
+                          )
+                        : null,
+                    boxShadow: activeColor == i + 1 || (i == 1 && scanBlinkOn)
+                        ? [
+                            BoxShadow(
+                              color: (i == 1 && scanBlinkOn)
+                                  ? NexusPalette.violet.withValues(alpha: 0.42)
+                                  : NexusPalette.violet.withValues(alpha: 0.22),
+                              blurRadius: 16,
+                              spreadRadius: -8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Text(
+                    labels[i],
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.dmMono(
+                      fontSize: 14,
+                      fontWeight:
+                          activeColor == i + 1 || (i == 1 && scanBlinkOn)
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                      letterSpacing: 0.45,
+                      color: activeColor == i + 1
+                          ? activeText
+                          : (i == 1 && scanBlinkOn)
+                          ? NexusPalette.lightBright
+                          : inactiveText,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (i < labels.length - 1) const SizedBox(width: 4),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SetupSection extends StatelessWidget {
+  const _SetupSection({
+    required super.key,
+    required this.state,
+    required this.surface,
+    required this.border,
+    required this.textColor,
+    required this.bright,
+  });
+
+  final ScanController state;
+  final Color surface;
+  final Color border;
+  final Color textColor;
+  final Color bright;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _FrostedCard(
+          padding: const EdgeInsets.all(18),
+          radius: 18,
+          borderColor: border,
+          tint: state.isDarkMode
+              ? const Color(0xA3101526)
+              : surface.withValues(alpha: 0.82),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(width: 30, height: 2, color: NexusPalette.violet),
+                  const SizedBox(width: 8),
+                  Text(
+                    'TALENT RADAR - WEB3 EDITION',
+                    style: GoogleFonts.dmMono(
+                      color: NexusPalette.violet,
+                      fontSize: 12,
+                      letterSpacing: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(text: 'Find every '),
+                    TextSpan(
+                      text: 'open internship',
+                      style: TextStyle(
+                        foreground: Paint()
+                          ..shader = const LinearGradient(
+                            colors: [
+                              NexusPalette.lightBright,
+                              NexusPalette.violet,
+                            ],
+                          ).createShader(const Rect.fromLTWH(0, 0, 260, 24)),
+                      ),
+                    ),
+                    const TextSpan(text: ' in Web3.'),
+                  ],
+                ),
+                style: GoogleFonts.syne(
+                  color: bright,
+                  fontSize: 30,
+                  height: 1.08,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Upload your company list and NEXUS auto-discovers career pages, runs 3-layer extraction, and returns structured internship results.',
+                style: TextStyle(color: textColor),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  const Expanded(
+                    child: _HeroStat(value: '3x', label: 'Detection layers'),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: _HeroStat(value: '12', label: 'User-Agent strings'),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _HeroStat(
+                      value: '${state.uploadedCompanies.length}',
+                      label: 'Companies loaded',
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
+        ),
+        const SizedBox(height: 14),
+        _StepIndicator(active: state.activeStep),
+        const SizedBox(height: 14),
+        _InlineConfigureCard(state: state),
+        const SizedBox(height: 14),
+        _ActionBar(state: state),
+      ],
+    );
+  }
+}
+
+class _InlineConfigureCard extends StatelessWidget {
+  const _InlineConfigureCard({required this.state});
+
+  final ScanController state;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = state.isDarkMode;
+    final panel = isDark ? NexusPalette.darkPanel : NexusPalette.lightPanel;
+    final border = isDark ? NexusPalette.darkBorder : NexusPalette.lightBorder;
+
+    return _FrostedCard(
+      padding: const EdgeInsets.all(14),
+      radius: 16,
+      borderColor: border,
+      tint: isDark ? const Color(0xA3121728) : panel.withValues(alpha: 0.88),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Configure', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          TextFormField(
+            initialValue: state.keywords,
+            onChanged: state.setKeywords,
+            decoration: const InputDecoration(labelText: 'Include Keywords'),
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            initialValue: state.excludes,
+            onChanged: state.setExcludes,
+            decoration: const InputDecoration(labelText: 'Exclude Keywords'),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Max duration: ${state.maxDuration} months',
+            style: GoogleFonts.dmMono(fontSize: 12, color: NexusPalette.dim),
+          ),
+          Slider(
+            value: state.maxDuration.toDouble(),
+            min: 0,
+            max: 18,
+            divisions: 18,
+            onChanged: state.setMaxDuration,
+          ),
+          Text(
+            'Companies to scan: ${state.scanLimit}',
+            style: GoogleFonts.dmMono(fontSize: 12, color: NexusPalette.dim),
+          ),
+          Slider(
+            value: state.scanLimit.toDouble(),
+            min: 1,
+            max: state.maxScanLimit.toDouble(),
+            divisions: state.maxScanLimit > 1 ? state.maxScanLimit - 1 : null,
+            onChanged: state.setScanLimit,
+          ),
+          Text(
+            'Parallel workers: ${state.workers}',
+            style: GoogleFonts.dmMono(fontSize: 12, color: NexusPalette.dim),
+          ),
+          Slider(
+            value: state.workers.toDouble(),
+            min: 1,
+            max: 10,
+            divisions: 9,
+            onChanged: state.setWorkers,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScanSection extends StatelessWidget {
+  const _ScanSection({required super.key, required this.state});
+
+  final ScanController state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _MetricCard(
+              label: 'Scanned',
+              value: '${state.metrics['scanned'] ?? 0}',
+              color: NexusPalette.cyan,
+              icon: '#',
+            ),
+            _MetricCard(
+              label: 'Found',
+              value: '${state.metrics['hits'] ?? 0}',
+              color: NexusPalette.violet,
+              icon: '#',
+            ),
+            _MetricCard(
+              label: 'Errors',
+              value: '${state.metrics['errors'] ?? 0}',
+              color: NexusPalette.amber,
+              icon: '#',
+            ),
+            _MetricCard(
+              label: 'New',
+              value: '${state.newOpenings}',
+              color: NexusPalette.green,
+              icon: '+',
+            ),
+            _MetricCard(
+              label: 'Seen',
+              value: '${state.metrics['seenBefore'] ?? 0}',
+              color: NexusPalette.dim,
+              icon: 'S',
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _TrackerCard(state: state),
+        const SizedBox(height: 14),
+        _TerminalCard(state: state),
+        const SizedBox(height: 14),
+        _LiveBrowserCard(state: state),
+      ],
+    );
+  }
+}
+
+class _ResultsSection extends StatelessWidget {
+  const _ResultsSection({
+    required super.key,
+    required this.state,
+    required this.panel,
+    required this.border,
+    required this.textColor,
+    required this.resultsPanelHeight,
+  });
+
+  final ScanController state;
+  final Color panel;
+  final Color border;
+  final Color textColor;
+  final double resultsPanelHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.uploadedCompanies.isEmpty) {
+      return _FeatureGrid(panel: panel, border: border, textColor: textColor);
+    }
+
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        children: [
+          const TabBar(
+            tabs: [
+              Tab(text: 'Internships'),
+              Tab(text: 'No Listings'),
+              Tab(text: 'Errors'),
+            ],
+          ),
+          SizedBox(
+            height: resultsPanelHeight,
+            child: TabBarView(
+              children: [
+                _ResultsList(rows: state.hits, enableSeenFilter: true),
+                _ResultsList(rows: state.misses),
+                _ResultsList(rows: state.errors),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _ExportBar(state: state),
+        ],
+      ),
+    );
+  }
+}
+
+class _GridBackdrop extends CustomPainter {
+  const _GridBackdrop({required this.isDark});
+
+  final bool isDark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final major = Paint()
+      ..color = (isDark ? Colors.white : Colors.black).withValues(
+        alpha: isDark ? 0.06 : 0.04,
+      )
+      ..strokeWidth = 1;
+    final minor = Paint()
+      ..color = (isDark ? Colors.white : Colors.black).withValues(
+        alpha: isDark ? 0.03 : 0.02,
+      )
+      ..strokeWidth = 1;
+
+    const majorStep = 76.0;
+    const minorStep = 19.0;
+
+    for (var x = 0.0; x <= size.width; x += minorStep) {
+      final isMajor = (x / majorStep).roundToDouble() == (x / majorStep);
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        isMajor ? major : minor,
+      );
+    }
+    for (var y = 0.0; y <= size.height; y += minorStep) {
+      final isMajor = (y / majorStep).roundToDouble() == (y / majorStep);
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        isMajor ? major : minor,
+      );
+    }
+
+    final glowA = Paint()
+      ..shader =
+          RadialGradient(
+            colors: [
+              NexusPalette.violet.withValues(alpha: 0.13),
+              Colors.transparent,
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(size.width * 0.75, 140),
+              radius: 260,
+            ),
+          );
+    canvas.drawCircle(Offset(size.width * 0.75, 140), 260, glowA);
+
+    final glowB = Paint()
+      ..shader =
+          RadialGradient(
+            colors: [
+              NexusPalette.cyan.withValues(alpha: 0.09),
+              Colors.transparent,
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(size.width * 0.18, size.height * 0.55),
+              radius: 220,
+            ),
+          );
+    canvas.drawCircle(
+      Offset(size.width * 0.18, size.height * 0.55),
+      220,
+      glowB,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GridBackdrop oldDelegate) =>
+      oldDelegate.isDark != isDark;
+}
+
+class _FrostedCard extends StatelessWidget {
+  const _FrostedCard({
+    required this.child,
+    required this.borderColor,
+    required this.tint,
+    this.padding,
+    this.radius = 16,
+    this.width,
+  });
+
+  final Widget child;
+  final Color borderColor;
+  final Color tint;
+  final EdgeInsetsGeometry? padding;
+  final double radius;
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          width: width,
+          padding: padding,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                tint.withValues(alpha: 0.88),
+                tint.withValues(alpha: 0.62),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: borderColor.withValues(alpha: 0.95)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 26,
+                offset: const Offset(0, 12),
+              ),
+              BoxShadow(
+                color: Colors.white.withValues(alpha: 0.05),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: child,
         ),
       ),
     );
@@ -294,18 +800,76 @@ class _ActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = state.isDarkMode;
+    final panel = isDark ? const Color(0xFF0F1322) : NexusPalette.lightSurface;
+    final border = isDark ? const Color(0xFF2A3047) : NexusPalette.lightBorder;
+    final subtle = isDark ? const Color(0xFF97A2C4) : const Color(0xFF5F6785);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 520;
         if (compact) {
           return Column(
             children: [
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: state.pickFile,
-                  icon: const Icon(Icons.upload_file),
-                  label: const Text('Upload CSV/XLSX'),
+              InkWell(
+                onTap: state.pickFile,
+                borderRadius: BorderRadius.circular(16),
+                child: _FrostedCard(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  radius: 16,
+                  borderColor: border,
+                  tint: isDark
+                      ? const Color(0xA3121728)
+                      : panel.withValues(alpha: 0.88),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF181D30),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: border),
+                        ),
+                        child: const Icon(Icons.upload_file, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Upload CSV / XLSX',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                color: isDark
+                                    ? NexusPalette.darkBright
+                                    : NexusPalette.lightBright,
+                                letterSpacing: -0.3,
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Drag and drop, or click to browse one company per row',
+                              style: GoogleFonts.dmMono(
+                                fontSize: 11,
+                                color: subtle,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton(
+                        onPressed: state.pickFile,
+                        child: const Text('Browse'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -323,17 +887,72 @@ class _ActionBar extends StatelessWidget {
           );
         }
 
-        return Row(
+        return Column(
           children: [
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: state.pickFile,
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Upload CSV/XLSX'),
+            InkWell(
+              onTap: state.pickFile,
+              borderRadius: BorderRadius.circular(16),
+              child: _FrostedCard(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                radius: 16,
+                borderColor: border,
+                tint: isDark
+                    ? const Color(0xA3121728)
+                    : panel.withValues(alpha: 0.88),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF181D30),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: border),
+                      ),
+                      child: const Icon(Icons.upload_file, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Upload CSV / XLSX',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: isDark
+                                  ? NexusPalette.darkBright
+                                  : NexusPalette.lightBright,
+                              letterSpacing: -0.3,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Drag and drop, or click to browse one company per row',
+                            style: GoogleFonts.dmMono(
+                              fontSize: 11,
+                              color: subtle,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    OutlinedButton(
+                      onPressed: state.pickFile,
+                      child: const Text('Browse'),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
               child: FilledButton.icon(
                 onPressed: state.isScanning || state.uploadedCompanies.isEmpty
                     ? null
@@ -345,185 +964,6 @@ class _ActionBar extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-class _AlertsCard extends StatelessWidget {
-  const _AlertsCard({required this.state});
-
-  final ScanController state;
-
-  @override
-  Widget build(BuildContext context) {
-    if (state.alerts.isEmpty) return const SizedBox.shrink();
-    final isDark = state.isDarkMode;
-    final panel = isDark ? NexusPalette.darkPanel : NexusPalette.lightPanel;
-    final border = isDark ? NexusPalette.darkBorder : NexusPalette.lightBorder;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: panel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Alerts', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          for (final a in state.alerts.take(4))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _alertColor(a.level).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _alertColor(a.level).withValues(alpha: 0.45),
-                  ),
-                ),
-                child: ListTile(
-                  dense: true,
-                  title: Text(a.title),
-                  subtitle: Text(a.body),
-                  trailing: IconButton(
-                    onPressed: () => state.dismissAlert(a.id),
-                    icon: const Icon(Icons.close, size: 18),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Color _alertColor(String level) {
-    switch (level) {
-      case 'success':
-        return NexusPalette.green;
-      case 'warning':
-        return NexusPalette.amber;
-      case 'error':
-        return NexusPalette.rose;
-      default:
-        return NexusPalette.cyan;
-    }
-  }
-}
-
-class _ProfileSetupCard extends StatelessWidget {
-  const _ProfileSetupCard({required this.state});
-
-  final ScanController state;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = state.isDarkMode;
-    final panel = isDark ? NexusPalette.darkPanel : NexusPalette.lightPanel;
-    final border = isDark ? NexusPalette.darkBorder : NexusPalette.lightBorder;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: panel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Role Match Profile (0-100 Score)',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Upload/paste resume and preferences to score each role with explainable reasons.',
-            style: GoogleFonts.dmMono(fontSize: 11, color: NexusPalette.dim),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: state.pickResumeFile,
-                icon: const Icon(Icons.description_outlined),
-                label: const Text('Upload Resume File'),
-              ),
-              _Badge(
-                text: 'Chars: ${state.resumeText.trim().length}',
-                fg: NexusPalette.cyan,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          TextFormField(
-            initialValue: state.resumeText,
-            minLines: 2,
-            maxLines: 5,
-            onChanged: state.setResumeText,
-            decoration: const InputDecoration(
-              labelText: 'Resume text (paste if upload not readable)',
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextFormField(
-            initialValue: state.profileSkillsInput,
-            onChanged: state.setProfileSkillsInput,
-            decoration: const InputDecoration(
-              labelText: 'Skills (comma separated)',
-              hintText: 'dart, flutter, sql, blockchain',
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextFormField(
-            initialValue: state.preferredRolesInput,
-            onChanged: state.setPreferredRolesInput,
-            decoration: const InputDecoration(
-              labelText: 'Preferred roles (comma separated)',
-              hintText: 'backend, software, mobile',
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextFormField(
-            initialValue: state.preferredLocationsInput,
-            onChanged: state.setPreferredLocationsInput,
-            decoration: const InputDecoration(
-              labelText: 'Preferred locations (comma separated)',
-              hintText: 'remote, bengaluru, pune',
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  initialValue: state.graduationYearInput,
-                  keyboardType: TextInputType.number,
-                  onChanged: state.setGraduationYearInput,
-                  decoration: const InputDecoration(
-                    labelText: 'Graduation year',
-                    hintText: '2026',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: state.eligibleForWork,
-                  onChanged: state.setEligibleForWork,
-                  title: const Text('Eligible for work'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
@@ -541,13 +981,11 @@ class _TrackerCard extends StatelessWidget {
     final panel = isDark ? NexusPalette.darkPanel : NexusPalette.lightPanel;
     final border = isDark ? NexusPalette.darkBorder : NexusPalette.lightBorder;
 
-    return Container(
+    return _FrostedCard(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: panel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border),
-      ),
+      radius: 16,
+      borderColor: border,
+      tint: isDark ? const Color(0xA3121728) : panel.withValues(alpha: 0.88),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -613,13 +1051,21 @@ class _TrackerCard extends StatelessWidget {
   }
 }
 
-class _TerminalCard extends StatelessWidget {
+class _TerminalCard extends StatefulWidget {
   const _TerminalCard({required this.state});
 
   final ScanController state;
 
   @override
+  State<_TerminalCard> createState() => _TerminalCardState();
+}
+
+class _TerminalCardState extends State<_TerminalCard> {
+  bool _isCollapsed = true;
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF030508),
@@ -654,33 +1100,71 @@ class _TerminalCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _isCollapsed = !_isCollapsed;
+                    });
+                  },
+                  tooltip: _isCollapsed ? 'Expand logs' : 'Collapse logs',
+                  icon: Icon(
+                    _isCollapsed
+                        ? Icons.keyboard_arrow_down_rounded
+                        : Icons.keyboard_arrow_up_rounded,
+                    color: NexusPalette.dim,
+                  ),
+                ),
               ],
             ),
           ),
-          SizedBox(
-            height: 150,
-            child: ListView.builder(
-              itemCount: state.logLines.length,
-              itemBuilder: (context, index) {
-                final e = state.logLines[index];
-                final kind = (e['kind'] ?? '').toString();
-                var color = NexusPalette.darkBody;
-                if (kind == 'hit') color = NexusPalette.green;
-                if (kind == 'error') color = NexusPalette.rose;
-                if (kind == 'miss') color = NexusPalette.dim;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 2,
-                  ),
-                  child: Text(
-                    '${e['message'] ?? ''}',
-                    style: GoogleFonts.dmMono(color: color, fontSize: 12),
-                  ),
-                );
-              },
+          AnimatedCrossFade(
+            firstCurve: Curves.easeOutCubic,
+            secondCurve: Curves.easeOutCubic,
+            sizeCurve: Curves.easeOutCubic,
+            duration: const Duration(milliseconds: 220),
+            crossFadeState: _isCollapsed
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: SizedBox(
+              height: 150,
+              child: ListView.builder(
+                itemCount: state.logLines.length,
+                itemBuilder: (context, index) {
+                  final e = state.logLines[index];
+                  final kind = (e['kind'] ?? '').toString();
+                  var color = NexusPalette.darkBody;
+                  if (kind == 'hit') color = NexusPalette.green;
+                  if (kind == 'error') color = NexusPalette.rose;
+                  if (kind == 'miss') color = NexusPalette.dim;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      '${e['message'] ?? ''}',
+                      style: GoogleFonts.dmMono(color: color, fontSize: 12),
+                    ),
+                  );
+                },
+              ),
             ),
+            secondChild: const SizedBox.shrink(),
           ),
+          if (_isCollapsed)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Logs collapsed',
+                  style: GoogleFonts.dmMono(
+                    fontSize: 11,
+                    color: NexusPalette.dim,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -705,20 +1189,8 @@ class _ResultsList extends StatefulWidget {
 
 enum _SeenFilter { all, newOnly, seenOnly }
 
-enum _ScoreBandFilter {
-  all,
-  above90,
-  between70And89,
-  below70,
-  eligibilityIssue,
-}
-
-enum _ScoreSort { scoreHighToLow, scoreLowToHigh }
-
 class _ResultsListState extends State<_ResultsList> {
   _SeenFilter _filter = _SeenFilter.all;
-  _ScoreBandFilter _scoreBandFilter = _ScoreBandFilter.all;
-  _ScoreSort _scoreSort = _ScoreSort.scoreHighToLow;
   String _query = '';
   String _source = 'All';
   String _location = 'All';
@@ -777,35 +1249,6 @@ class _ResultsListState extends State<_ResultsList> {
                 r.source.contains('ashby'),
           )
           .toList(growable: false);
-    }
-
-    if (widget.enableSeenFilter) {
-      switch (_scoreBandFilter) {
-        case _ScoreBandFilter.above90:
-          rows = rows.where((r) => r.fitScore >= 90).toList(growable: false);
-          break;
-        case _ScoreBandFilter.between70And89:
-          rows = rows
-              .where((r) => r.fitScore >= 70 && r.fitScore <= 89)
-              .toList(growable: false);
-          break;
-        case _ScoreBandFilter.below70:
-          rows = rows.where((r) => r.fitScore < 70).toList(growable: false);
-          break;
-        case _ScoreBandFilter.eligibilityIssue:
-          rows = rows.where((r) => r.eligibilityIssue).toList(growable: false);
-          break;
-        case _ScoreBandFilter.all:
-          break;
-      }
-
-      rows = [...rows]
-        ..sort((a, b) {
-          if (_scoreSort == _ScoreSort.scoreLowToHigh) {
-            return a.fitScore.compareTo(b.fitScore);
-          }
-          return b.fitScore.compareTo(a.fitScore);
-        });
     }
 
     return rows;
@@ -867,68 +1310,7 @@ class _ResultsListState extends State<_ResultsList> {
                         selected: _atsOnly,
                         onSelected: (v) => setState(() => _atsOnly = v),
                       ),
-                      ChoiceChip(
-                        label: const Text('90+'),
-                        selected: _scoreBandFilter == _ScoreBandFilter.above90,
-                        onSelected: (_) => setState(
-                          () => _scoreBandFilter = _ScoreBandFilter.above90,
-                        ),
-                      ),
-                      ChoiceChip(
-                        label: const Text('70-89'),
-                        selected:
-                            _scoreBandFilter == _ScoreBandFilter.between70And89,
-                        onSelected: (_) => setState(
-                          () => _scoreBandFilter =
-                              _ScoreBandFilter.between70And89,
-                        ),
-                      ),
-                      ChoiceChip(
-                        label: const Text('<70'),
-                        selected: _scoreBandFilter == _ScoreBandFilter.below70,
-                        onSelected: (_) => setState(
-                          () => _scoreBandFilter = _ScoreBandFilter.below70,
-                        ),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Eligibility issue'),
-                        selected:
-                            _scoreBandFilter ==
-                            _ScoreBandFilter.eligibilityIssue,
-                        onSelected: (_) => setState(
-                          () => _scoreBandFilter =
-                              _ScoreBandFilter.eligibilityIssue,
-                        ),
-                      ),
-                      ChoiceChip(
-                        label: const Text('All scores'),
-                        selected: _scoreBandFilter == _ScoreBandFilter.all,
-                        onSelected: (_) => setState(
-                          () => _scoreBandFilter = _ScoreBandFilter.all,
-                        ),
-                      ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<_ScoreSort>(
-                    value: _scoreSort,
-                    style: dropdownText,
-                    dropdownColor: dropdownBg,
-                    iconEnabledColor: dropdownIcon,
-                    decoration: const InputDecoration(labelText: 'Score sort'),
-                    items: const [
-                      DropdownMenuItem<_ScoreSort>(
-                        value: _ScoreSort.scoreHighToLow,
-                        child: Text('Score: high to low'),
-                      ),
-                      DropdownMenuItem<_ScoreSort>(
-                        value: _ScoreSort.scoreLowToHigh,
-                        child: Text('Score: low to high'),
-                      ),
-                    ],
-                    onChanged: (v) => setState(
-                      () => _scoreSort = v ?? _ScoreSort.scoreHighToLow,
-                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -1073,33 +1455,13 @@ class _ResultsListState extends State<_ResultsList> {
                   title: Row(
                     children: [
                       Expanded(child: Text(r.title)),
-                      if (r.fitScore > 0)
-                        _Badge(
-                          text: '${r.fitScore}',
-                          fg: r.fitScore >= 85
-                              ? NexusPalette.green
-                              : r.fitScore >= 70
-                              ? NexusPalette.cyan
-                              : r.fitScore >= 50
-                              ? NexusPalette.amber
-                              : NexusPalette.rose,
-                        ),
-                      const SizedBox(width: 6),
-                      if (r.fitScore > 0)
-                        IconButton(
-                          onPressed: () => _showScoreWhy(context, r),
-                          icon: const Icon(Icons.info_outline, size: 18),
-                          tooltip: 'Why this score',
-                        ),
                       if (r.isNew)
                         const _Badge(text: 'NEW', fg: NexusPalette.green),
                       if (r.isSeenBefore)
                         const _Badge(text: 'SEEN', fg: NexusPalette.dim),
                     ],
                   ),
-                  subtitle: Text(
-                    '${r.company} - ${r.location} - ${r.source}${r.fitLabel.isNotEmpty ? ' - ${r.fitLabel}' : ''}',
-                  ),
+                  subtitle: Text('${r.company} - ${r.location} - ${r.source}'),
                   trailing: Text(r.duration),
                 );
               },
@@ -1113,38 +1475,6 @@ class _ResultsListState extends State<_ResultsList> {
     final uri = Uri.tryParse(link);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  Future<void> _showScoreWhy(BuildContext context, ScanResultRow r) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Why this score? ${r.fitScore}/100',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(r.title),
-                const SizedBox(height: 10),
-                for (final line in r.scoreWhy)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Text('- $line'),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 }
 
@@ -1232,92 +1562,6 @@ class _FeatureGrid extends StatelessWidget {
   }
 }
 
-class _NexusDrawer extends StatelessWidget {
-  const _NexusDrawer({required this.state});
-
-  final ScanController state;
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            '? NEXUS',
-            style: GoogleFonts.syne(fontWeight: FontWeight.w800, fontSize: 20),
-          ),
-          Text(
-            'Talent Intelligence Platform',
-            style: GoogleFonts.dmMono(fontSize: 11, color: NexusPalette.dim),
-          ),
-          const SizedBox(height: 12),
-          const Text('Appearance'),
-          const SizedBox(height: 6),
-          FilledButton(
-            onPressed: state.toggleTheme,
-            child: Text(
-              state.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Text('Search Parameters'),
-          const SizedBox(height: 6),
-          TextFormField(
-            initialValue: state.keywords,
-            onChanged: state.setKeywords,
-            decoration: const InputDecoration(labelText: 'Keywords'),
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            initialValue: state.excludes,
-            onChanged: state.setExcludes,
-            decoration: const InputDecoration(labelText: 'Exclude Keywords'),
-          ),
-          const SizedBox(height: 10),
-          const Text('Scan Configuration'),
-          const SizedBox(height: 6),
-          Text(
-            'Engine: In-app local mode (no backend server required)',
-            style: GoogleFonts.dmMono(fontSize: 11, color: NexusPalette.dim),
-          ),
-          const SizedBox(height: 8),
-          Text('Max Duration: ${state.maxDuration} months'),
-          Slider(
-            value: state.maxDuration.toDouble(),
-            min: 0,
-            max: 18,
-            divisions: 18,
-            onChanged: state.setMaxDuration,
-          ),
-          Text('Companies to Scan: ${state.scanLimit}'),
-          Slider(
-            value: state.scanLimit.toDouble(),
-            min: 1,
-            max: 200,
-            divisions: 199,
-            onChanged: state.setScanLimit,
-          ),
-          Text('Parallel Workers: ${state.workers}'),
-          Slider(
-            value: state.workers.toDouble(),
-            min: 1,
-            max: 10,
-            divisions: 9,
-            onChanged: state.setWorkers,
-          ),
-          const SizedBox(height: 8),
-          FilledButton.icon(
-            onPressed: state.pickFile,
-            icon: const Icon(Icons.file_open),
-            label: const Text('Choose Data File'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _LiveBrowserCard extends StatefulWidget {
   const _LiveBrowserCard({required this.state});
 
@@ -1331,6 +1575,7 @@ class _LiveBrowserCardState extends State<_LiveBrowserCard> {
   WebViewController? _web;
   String _loadedUrl = '';
   bool _isBrowserExpanded = false;
+  bool _isCollapsed = true;
 
   bool get _supportsEmbeddedBrowser => Platform.isAndroid || Platform.isIOS;
 
@@ -1367,13 +1612,11 @@ class _LiveBrowserCardState extends State<_LiveBrowserCard> {
       _web!.loadRequest(Uri.parse(target));
     }
 
-    return Container(
+    return _FrostedCard(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: panel,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border),
-      ),
+      radius: 16,
+      borderColor: border,
+      tint: isDark ? const Color(0xA3121728) : panel.withValues(alpha: 0.88),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1398,46 +1641,91 @@ class _LiveBrowserCardState extends State<_LiveBrowserCard> {
                   _isBrowserExpanded ? Icons.fullscreen_exit : Icons.fullscreen,
                 ),
               ),
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _isCollapsed = !_isCollapsed;
+                  });
+                },
+                tooltip: _isCollapsed
+                    ? 'Expand live browser'
+                    : 'Collapse live browser',
+                icon: Icon(
+                  _isCollapsed
+                      ? Icons.keyboard_arrow_down_rounded
+                      : Icons.keyboard_arrow_up_rounded,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            state.currentCompany.isEmpty
-                ? 'Waiting for next company...'
-                : 'Now visiting: ${state.currentCompany}',
-            style: GoogleFonts.dmMono(fontSize: 11, color: NexusPalette.dim),
-          ),
-          const SizedBox(height: 8),
-          if (target.isNotEmpty)
-            Text(
-              target,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.dmMono(fontSize: 11, color: NexusPalette.cyan),
+          AnimatedCrossFade(
+            firstCurve: Curves.easeOutCubic,
+            secondCurve: Curves.easeOutCubic,
+            sizeCurve: Curves.easeOutCubic,
+            duration: const Duration(milliseconds: 220),
+            crossFadeState: _isCollapsed
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 6),
+                Text(
+                  state.currentCompany.isEmpty
+                      ? 'Waiting for next company...'
+                      : 'Now visiting: ${state.currentCompany}',
+                  style: GoogleFonts.dmMono(
+                    fontSize: 11,
+                    color: NexusPalette.dim,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (target.isNotEmpty)
+                  Text(
+                    target,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.dmMono(
+                      fontSize: 11,
+                      color: NexusPalette.cyan,
+                    ),
+                  ),
+                if (target.isNotEmpty) const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    height: _browserHeight(context),
+                    color: Colors.black,
+                    child: !_supportsEmbeddedBrowser
+                        ? const Center(
+                            child: Text(
+                              'Mini-browser preview is available on Android/iOS runtime.',
+                              textAlign: TextAlign.center,
+                            ),
+                          )
+                        : target.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Start scan to watch pages load step-by-step.',
+                              textAlign: TextAlign.center,
+                            ),
+                          )
+                        : WebViewWidget(controller: _web!),
+                  ),
+                ),
+              ],
             ),
-          if (target.isNotEmpty) const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              height: _browserHeight(context),
-              color: Colors.black,
-              child: !_supportsEmbeddedBrowser
-                  ? const Center(
-                      child: Text(
-                        'Mini-browser preview is available on Android/iOS runtime.',
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  : target.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'Start scan to watch pages load step-by-step.',
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  : WebViewWidget(controller: _web!),
+            secondChild: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                'Live browser collapsed',
+                style: GoogleFonts.dmMono(
+                  fontSize: 11,
+                  color: NexusPalette.dim,
+                ),
+              ),
             ),
           ),
         ],
@@ -1598,7 +1886,11 @@ class _StepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labels = ['Upload list', 'Configure', 'Launch scan', 'Export'];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final connector = isDark
+        ? const Color(0xFF343C56)
+        : const Color(0xFFC9D4F1);
+    final labels = ['Upload', 'Configure', 'Launch scan', 'Export'];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -1608,10 +1900,7 @@ class _StepIndicator extends StatelessWidget {
             if (i < labels.length - 1)
               SizedBox(
                 width: 48,
-                child: Divider(
-                  color: Theme.of(context).dividerColor,
-                  thickness: 1,
-                ),
+                child: Divider(color: connector, thickness: 1),
               ),
           ],
         ],
@@ -1633,6 +1922,10 @@ class _StepNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedText = isDark
+        ? const Color(0xFFAAB3D0)
+        : const Color(0xFF4A5272);
     final done = index < active;
     final isActive = index == active;
     return SizedBox(
@@ -1646,27 +1939,31 @@ class _StepNode extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isActive
-                  ? NexusPalette.cyan
+                  ? NexusPalette.violet
                   : done
-                  ? NexusPalette.green.withValues(alpha: 0.2)
+                  ? NexusPalette.violet.withValues(alpha: 0.2)
                   : Colors.transparent,
               border: Border.all(
                 color: done
-                    ? NexusPalette.green
+                    ? NexusPalette.violet
                     : isActive
-                    ? NexusPalette.cyan
+                    ? NexusPalette.violet
                     : NexusPalette.dim,
               ),
             ),
-            child: Text(
-              done ? '?' : '$index',
-              style: TextStyle(
-                color: isActive
-                    ? Colors.black
-                    : (done ? NexusPalette.green : NexusPalette.dim),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child: done
+                ? Icon(
+                    Icons.check,
+                    size: 14,
+                    color: isActive ? Colors.black : NexusPalette.violet,
+                  )
+                : Text(
+                    '$index',
+                    style: TextStyle(
+                      color: isActive ? Colors.black : mutedText,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -1674,7 +1971,11 @@ class _StepNode extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: GoogleFonts.dmSans(fontSize: 12),
+            style: GoogleFonts.dmSans(
+              fontSize: 12,
+              color: isActive || done ? null : mutedText,
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -1722,16 +2023,14 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
+    return _FrostedCard(
       width: 170,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? NexusPalette.darkPanel : NexusPalette.lightPanel,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? NexusPalette.darkBorder : NexusPalette.lightBorder,
-        ),
-      ),
+      radius: 14,
+      borderColor: isDark ? NexusPalette.darkBorder : NexusPalette.lightBorder,
+      tint: isDark
+          ? const Color(0xA3121728)
+          : NexusPalette.lightPanel.withValues(alpha: 0.88),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
