@@ -11,6 +11,8 @@
 const Map<String, String> defaultCompanyUrls = {
   'Solana Labs': 'https://jobs.lever.co/solanalabs',
   'Offchain Labs': 'https://www.offchainlabs.com/careers',
+  'Big basket':
+      'https://bigbasket.darwinbox.in/ms/candidatev2/main/careers/allJobs',
   'OP Labs': 'https://jobs.ashbyhq.com/oplabs',
   'Matter Labs': 'https://jobs.ashbyhq.com/matter-labs',
   'StarkWare': 'https://starkware.co/careers/',
@@ -19,7 +21,7 @@ const Map<String, String> defaultCompanyUrls = {
   'Ethereum Foundation': 'https://ethereum.foundation/careers',
   'Aptos Labs': 'https://aptosnetwork.com/foundation/careers',
   'Alchemy': 'https://www.alchemy.com/careers#open-roles',
-  'Chainlink Labs': 'https://chainlinklabs.com/careers',
+  'Chainlink Labs': 'https://chainlinklabs.com/open-roles',
   'Consensys': 'https://consensys.io/open-roles',
   'The Graph': 'https://thegraph.com/jobs/',
   'Near Protocol': 'https://near.foundation/careers/',
@@ -49,7 +51,7 @@ const Map<String, String> defaultCompanyUrls = {
   'CowSwap': 'https://jobs.ashbyhq.com/cow-dao?utm_source=laMjao1z57',
   'Securitize': 'https://securitize.io/about-us/careers',
   'Ondo Finance': 'https://jobs.gem.com/ondo-finance',
-  'Centrifuge': 'https://centrifuge.io/about#careers',
+  'Centrifuge': 'https://api.lever.co/v0/postings/centrifuge?mode=json',
   'Superstate': 'https://jobs.lever.co/superstate',
   'Tokeny': 'https://tokeny.com/jobs/',
   'Circle': 'https://careers.circle.com/us/en',
@@ -61,6 +63,8 @@ const Map<String, String> defaultCompanyUrls = {
   'Credix':
       'https://credix.notion.site/Work-with-us-at-Credix-606913498d5a4f02949a641e738f9257',
   'Swarm': 'https://docs.swarm.com/about/careers/blockchain-developer',
+  'bluestone':
+      'https://www.google.com/search?q=bluestone%20careers&oq=bluestone%20&gs_lcrp=EgZjaHJvbWUqDQgBEAAYkQIYgAQYigUyBggAEEUYOTINCAEQABiRAhiABBiKBTIKCAIQABixAxiABDINCAMQABiRAhiABBiKBTIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDINCAgQABiRAhiABBiKBTINCAkQABiRAhiABBiKBTIHCAoQABiABDIHCAsQABiABDIHCAwQABiABDIHCA0QABiABDIHCA4QABiABNIBCTExNTY0ajBqN6gCFLACAfEFb8N0-PnZhy4&client=tablet-android-lenovo-rvo3&sourceid=chrome-mobile&ie=UTF-8&jbr=sep:0&udm=8&ved=2ahUKEwjJsbWnitaTAxUNsFYBHaNnHtAQ3L8LegQITBAM',
   'Backed Finance': 'https://backed.fi/careers#jobs',
   'Fireblocks': 'https://job-boards.greenhouse.io/fireblocks',
   'Anchorage Digital': 'https://jobs.lever.co/anchorage',
@@ -75,11 +79,14 @@ const Map<String, String> defaultCompanyUrls = {
   'Coinbase Prime': 'https://www.coinbase.com/en-in/careers/positions',
   'Coinbase': 'https://www.coinbase.com/en-in/careers',
   'Kraken': 'https://www.kraken.com/careers',
-  'Binance': 'https://www.binance.com/en-IN/careers/job-openings?team=All',
+  'Binance': 'https://jobs.lever.co/binance',
   'Gemini': 'https://www.gemini.com/careers#open-roles',
   'a16zcrypto': 'https://a16zcrypto.com/jobs/',
   'Revolut': 'https://www.revolut.com/careers/',
   'Robinhood': 'https://careers.robinhood.com/',
+  'Adyen': 'https://careers.adyen.com/vacancies?locale=en',
+  'Aeon': 'https://aeonsoftware.net/careers/',
+  'Acko': 'https://www.acko.com/careers/jobs/',
   'Stripe': 'https://stripe.com/in/jobs',
   'PayPal': 'https://careers.pypl.com/home/',
   'Block (Square)': 'https://block.xyz/careers/jobs',
@@ -98,6 +105,8 @@ const Map<String, String> defaultCompanyUrls = {
   'Blockchain.com': 'https://www.blockchain.com/careers/',
   'Bullish': 'https://bullish.wd3.myworkdayjobs.com/Bullish',
   'BlackRock': 'https://careers.blackrock.com/search-jobs',
+  'blackline':
+      'https://careers.blackline.com/careers-home/jobs?limit=100&page=1',
   'JPMorgan (Onyx)':
       'https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs',
   'Goldman Sachs': 'https://www.goldmansachs.com/careers/students',
@@ -111,7 +120,7 @@ const Map<String, String> defaultCompanyUrls = {
   'Franklin Templeton':
       'https://www.franklintempletoncareers.com/?title=careers',
   'Bank of New York Mellon':
-      'https://www.bny.com/corporate/global/en/about-us/careers/work-with-us.html',
+      'https://eofe.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/BNY-Careers/jobs?mode=location',
   'Nasdaq': 'https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site',
   'DTCC': 'https://www.dtcc.com/careers/job-search',
   'Swift': 'https://swift.wd3.myworkdayjobs.com/Join-Swift/',
@@ -128,12 +137,15 @@ const Map<String, String> defaultCompanyUrls = {
   'Illuvium': 'https://illuvium.io/jobs',
   'Proof of Play': 'https://jobs.ashbyhq.com/proofofplay',
   'Limit Break': 'https://limitbreak.com/careers.html',
+  'bread financial': 'https://careers.breadfinancial.com/us/en/search-results',
   'Azra Games': 'https://azragames.com/careers/#brxe-ioahlq',
   'Zora': 'https://job-boards.greenhouse.io/zora',
   'Pudgy Penguins': 'https://jobs.polymer.co/pudgy-penguins',
   'Farcaster (Merkle)': 'https://www.quicknode.com/careers',
   'Royal': 'https://royal.zohorecruit.com/careers',
   'a16z crypto': 'https://a16zcrypto.com/jobs/',
+  'capital one':
+      'https://www.capitalonecareers.com/category/technology-jobs/234/4412/1',
   'Paradigm': 'https://www.paradigm.xyz/careers',
   'Pantera Capital': 'https://jobs.panteracapital.com/jobs',
   'Dragonfly': 'https://www.dragonfly.xyz/#careers',
@@ -192,6 +204,7 @@ const Map<String, String> defaultCompanyUrls = {
   'samsung':
       'https://sec.wd3.myworkdayjobs.com/en-US/Samsung_Careers?locations=189767dd6c9201b802603c83a5292c78&Location_Country=c4f78be1a8f14da0ab49ce1162348a5e&hiringCompany=189767dd6c9201554f3e5312a7290a85',
   'LG electronics': 'https://globalcareers.lge.com/jobs',
+
   'HCL Tech': 'https://careers.hcltech.com/go/NonTPDemand/9558355/',
   'congnizant':
       'https://careers.cognizant.com/india-en/jobs/?keyword=&location=India&radius=100&lat=&lng=&cname=India&ccode=IN&pagesize=10#results',
@@ -297,6 +310,7 @@ const Map<String, String> defaultCompanyUrls = {
       'https://jobs.disneycareers.com/search-jobs?glat=28.665300369262695&glon=77.43910217285156',
   'Warner bro': 'https://careers.wbd.com/global/en/search-results',
   'comcast': 'https://jobs.comcast.com/search-jobs',
+  'cashfree': 'https://www.cashfree.com/careers/',
   'AT&T': 'https://www.att.jobs/search-jobs',
   'verizon':
       'https://mycareer.verizon.com/jobs/?search=&country=India&team=Technology',
