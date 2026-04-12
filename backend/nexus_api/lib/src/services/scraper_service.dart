@@ -42,6 +42,7 @@ class ScraperService {
     'icims.com',
     'teamtailor.com',
     'recruitee.com',
+    'reczee.com',
     'bamboohr.com',
   ];
 
@@ -65,6 +66,22 @@ class ScraperService {
         tenant: segments[recruitingIndex + 1],
         site: segments[recruitingIndex + 2],
       );
+    }
+
+    // Workday hosted pages often use /<locale>/<site>, e.g. /en-GB/DBS_Careers.
+    final first = segments.first;
+    final localePrefix = RegExp(
+      r'^[a-z]{2}(?:-[a-z]{2})?$',
+      caseSensitive: false,
+    );
+    if (localePrefix.hasMatch(first) && segments.length >= 2) {
+      final hostLabels = careerUri.host
+          .split('.')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      if (hostLabels.isEmpty) return null;
+      return (tenant: hostLabels.first, site: segments[1]);
     }
 
     final hostLabels = careerUri.host
@@ -150,6 +167,8 @@ class ScraperService {
     final loweredHost = careerUri.host.toLowerCase();
     final shouldPrioritizeKnownApi =
         loweredHost.contains('awign.com') ||
+        loweredHost.contains('gauntlet.xyz') ||
+        loweredHost.contains('search-careers.gm.com') ||
         loweredHost.contains('bain.com') ||
         loweredHost.contains('darwinbox.in') ||
         loweredHost.contains('capitalonecareers.com') ||
@@ -163,6 +182,7 @@ class ScraperService {
         loweredHost.contains('block.xyz') ||
         loweredHost.contains('blockchain.com') ||
         loweredHost.contains('avature.net') ||
+        loweredHost.contains('jobs.ea.com') ||
         loweredHost.contains('binance.com') ||
         loweredHost.contains('bitcoinsuisse.com') ||
         loweredHost.contains('greenhouse.io') ||
@@ -172,17 +192,57 @@ class ScraperService {
         loweredHost.contains('workforcenow.adp.com') ||
         loweredHost.contains('acko.com') ||
         loweredHost.contains('cashfree.com') ||
+        loweredHost.contains('chaoslabs.xyz') ||
         loweredHost.contains('artivatic.ai') ||
         loweredHost.contains('att.jobs') ||
         loweredHost.contains('careers.astrazeneca.com') ||
         loweredHost.contains('careers.blackrock.com') ||
+        loweredHost.contains('careers.coupa.com') ||
+        loweredHost.contains('careers.cred.club') ||
+        loweredHost.contains('copper.co') ||
+        loweredHost.contains('cybrilla.com') ||
+        loweredHost.contains('dapperlabs.com') ||
+        loweredHost.contains('notion.site') ||
+        loweredHost.contains('instahyre.com') ||
         loweredHost.contains('careers.kula.ai') ||
         loweredHost.contains('jobs.apple.com') ||
         loweredHost.contains('jobs.lever.co') ||
         loweredHost.contains('jobs.ashbyhq.com') ||
         loweredHost.contains('chainlinklabs.com') ||
+        loweredHost.contains('careers.ford.com') ||
+        loweredHost.contains('jobs.fidelity.com') ||
+        loweredHost.contains('finbox.in') ||
+        loweredHost.contains('jobs.reczee.com') ||
+        loweredHost.contains('finhaat.com') ||
+        loweredHost.contains('metacareers.com') ||
+        loweredHost.contains('etoro.com') ||
+        loweredHost.contains('www.exodus.com') ||
+        loweredHost.contains('careers.fabric.vc') ||
+        loweredHost.contains('eyglobal.yello.co') ||
+        loweredHost.contains('yello.co') ||
+        loweredHost.contains('careers.etsy.com') ||
         loweredHost.contains('jobs.aon.com') ||
+        loweredHost.contains('jobs.thecignagroup.com') ||
+        loweredHost.contains('jobs.electriccapital.com') ||
+        loweredHost.contains('consensys.io') ||
+        loweredHost.contains('careers.circle.com') ||
+        loweredHost.contains('careers.cisco.com') ||
+        loweredHost.contains('careers.cognizant.com') ||
+        loweredHost.contains('careers.lilly.com') ||
+        loweredHost.contains('southasiacareers.deloitte.com') ||
+        loweredHost.contains('jobs.disneycareers.com') ||
+        loweredHost.contains('jobs.ebayinc.com') ||
+        loweredHost.contains('eigenlabs.org') ||
+        loweredHost.contains('zohorecruit.in') ||
+        loweredHost.contains('careers.dxc.com') ||
+        loweredHost.contains('jobs.comcast.com') ||
+        loweredHost.contains('jobs.citi.com') ||
+        loweredHost.contains('careers.coca-colacompany.com') ||
+        loweredHost.contains('dydx.exchange') ||
+        loweredHost.contains('coinbase.com') ||
+        loweredHost.contains('cwan.com') ||
         loweredHost.contains('0x.org') ||
+        loweredHost.contains('www.google.com') ||
         loweredHost.contains('amazon.jobs') ||
         loweredHost.contains('careers.amd.com') ||
         loweredHost.contains('careers.amgen.com');
@@ -420,6 +480,11 @@ class ScraperService {
   }) {
     final discoveredHost = discoveredUri.host.toLowerCase();
     final originalHost = originalUri.host.toLowerCase();
+
+    if (originalHost.contains('gauntlet.xyz')) {
+      return Uri.https('jobs.lever.co', '/gauntlet');
+    }
+
     if (discoveredHost.contains('workforcenow.adp.com') &&
         originalHost.contains('workforcenow.adp.com')) {
       final discoveredPath = discoveredUri.path.toLowerCase();
@@ -439,6 +504,46 @@ class ScraperService {
       final originalPath = originalUri.path.toLowerCase();
       if (discoveredPath.contains('/careers') &&
           originalPath.contains('/search')) {
+        return originalUri;
+      }
+    }
+
+    if (discoveredHost.contains('jobs.ebayinc.com') &&
+        originalHost.contains('jobs.ebayinc.com')) {
+      final discoveredPath = discoveredUri.path.toLowerCase();
+      final originalPath = originalUri.path.toLowerCase();
+      if (discoveredPath.contains('/careers') &&
+          originalPath.contains('/search-results')) {
+        return originalUri;
+      }
+    }
+
+    if (discoveredHost.contains('jobs.ea.com') &&
+        originalHost.contains('jobs.ea.com')) {
+      final discoveredPath = discoveredUri.path.toLowerCase();
+      final originalPath = originalUri.path.toLowerCase();
+      if ((discoveredPath == '/careers' || discoveredPath == '/') &&
+          originalPath.contains('/careers/home')) {
+        return originalUri;
+      }
+    }
+
+    if (discoveredHost.contains('metacareers.com') &&
+        originalHost.contains('metacareers.com')) {
+      final discoveredPath = discoveredUri.path.toLowerCase();
+      final originalPath = originalUri.path.toLowerCase();
+      if ((discoveredPath == '/' || discoveredPath == '/home') &&
+          originalPath.contains('/jobsearch')) {
+        return originalUri;
+      }
+    }
+
+    if (discoveredHost.contains('careers.lilly.com') &&
+        originalHost.contains('careers.lilly.com')) {
+      final discoveredPath = discoveredUri.path.toLowerCase();
+      final originalPath = originalUri.path.toLowerCase();
+      if (discoveredPath.contains('/careers') &&
+          originalPath.contains('/search-results')) {
         return originalUri;
       }
     }
@@ -476,6 +581,13 @@ class ScraperService {
         return originalUri;
       }
     }
+
+    if (originalHost.contains('cwan.com') &&
+        (discoveredHost.contains('myworkdayjobs.com') ||
+            discoveredHost.contains('myworkdaysite.com'))) {
+      return originalUri;
+    }
+
     return discoveredUri;
   }
 
@@ -485,6 +597,2895 @@ class ScraperService {
     required List<String> keywords,
   }) async {
     final host = careerUri.host.toLowerCase();
+
+    if (host.contains('www.google.com') &&
+        careerUri.path.toLowerCase().contains(
+          '/about/careers/applications/jobs/results',
+        )) {
+      try {
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        String decodeEscaped(String input) {
+          return input
+              .replaceAll('\\/', '/')
+              .replaceAll('\\u003d', '=')
+              .replaceAll('\\u0026', '&')
+              .replaceAll('\\u003f', '?')
+              .replaceAll('\\u0027', "'")
+              .replaceAll('&amp;', '&');
+        }
+
+        bool matchesWholeWordOrPlural(String text, String term) {
+          final normalizedTerm = term.trim().toLowerCase();
+          if (normalizedTerm.isEmpty) return false;
+
+          final candidates = <String>{normalizedTerm};
+          if (normalizedTerm.endsWith('s') && normalizedTerm.length > 1) {
+            candidates.add(normalizedTerm.substring(0, normalizedTerm.length - 1));
+          } else {
+            candidates.add('${normalizedTerm}s');
+          }
+
+          for (final candidate in candidates) {
+            final pattern = RegExp('\\b${RegExp.escape(candidate)}\\b');
+            if (pattern.hasMatch(text)) {
+              return true;
+            }
+          }
+          return false;
+        }
+
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+        final baseUri = careerUri.replace(fragment: '');
+        const maxGooglePageCap = 191;
+        final requestedMaxPage = int.tryParse(
+          careerUri.queryParameters['page'] ?? '',
+        );
+        final maxGooglePages = (requestedMaxPage != null && requestedMaxPage > 0)
+            ? (requestedMaxPage > maxGooglePageCap
+                  ? maxGooglePageCap
+                  : requestedMaxPage)
+            : maxGooglePageCap;
+        const googleBatchSize = 12;
+
+        Future<MapEntry<Uri, String?>> fetchGooglePage(Uri uri) async {
+          try {
+            final response = await _client
+                .get(
+                  uri,
+                  headers: {
+                    'User-Agent': userAgents[
+                        DateTime.now().millisecond % userAgents.length],
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept':
+                        'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'DNT': '1',
+                  },
+                )
+                .timeout(const Duration(seconds: 10));
+            if (response.statusCode < 400 && response.body.trim().isNotEmpty) {
+              return MapEntry(uri, response.body);
+            }
+          } catch (_) {}
+
+          final rendered = await _fetchRendered(uri);
+          return MapEntry(uri, rendered);
+        }
+
+        final jobEntryPattern = RegExp(
+          r'\["([0-9A-Za-z_-]+)","([^"]+)","(https://www\.google\.com/about/careers/applications/signin\?jobId\\u003d[^"]+)"',
+        );
+        for (
+          var startPage = 1;
+          startPage <= maxGooglePages;
+          startPage += googleBatchSize
+        ) {
+          final endPage = (startPage + googleBatchSize - 1) > maxGooglePages
+              ? maxGooglePages
+              : (startPage + googleBatchSize - 1);
+          final batchUris = <Uri>[];
+          for (var page = startPage; page <= endPage; page++) {
+            batchUris.add(
+              baseUri.replace(
+                queryParameters: {
+                  ...baseUri.queryParameters,
+                  'page': '$page',
+                },
+              ),
+            );
+          }
+
+          final batchResults = await Future.wait(
+            batchUris.map(fetchGooglePage),
+          );
+
+          for (final result in batchResults) {
+            final pageUri = result.key;
+            final html = result.value;
+            if (html == null || html.trim().isEmpty) {
+              continue;
+            }
+
+            final matches = jobEntryPattern.allMatches(html);
+            for (final m in matches) {
+              final rawTitle = m.group(2) ?? '';
+              final rawLink = m.group(3) ?? '';
+
+              final title = normalize(decodeEscaped(rawTitle));
+              final applyLink = decodeEscaped(rawLink);
+              if (title.isEmpty || applyLink.isEmpty) continue;
+
+              final searchable = [title, applyLink].join(' | ').toLowerCase();
+              final exactWordMatch = matchTerms.any((kw) {
+                return matchesWholeWordOrPlural(searchable, kw);
+              });
+              if (!exactWordMatch &&
+                  !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+                  !fuzzyMatch(searchable, matchTerms)) {
+                continue;
+              }
+
+              final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+              if (seen.contains(key)) continue;
+              seen.add(key);
+
+              rows.add(
+                ScanResultRow(
+                  company: companyName,
+                  title: title,
+                  companyUrl: pageUri.toString(),
+                  applyLink: applyLink,
+                  location: 'Not specified',
+                  duration: 'Unknown',
+                  deadline: '—',
+                  source: 'Google Careers Embedded Data',
+                  error: '',
+                ),
+              );
+            }
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('search-careers.gm.com') &&
+        careerUri.path.toLowerCase().contains('/jobs')) {
+      try {
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final visitedPages = <String>{};
+        final pageQueue = <Uri>[careerUri.replace(fragment: '')];
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        while (pageQueue.isNotEmpty && visitedPages.length < 45) {
+          final current = pageQueue.removeAt(0).replace(fragment: '');
+          final currentKey = current.toString();
+          if (visitedPages.contains(currentKey)) {
+            continue;
+          }
+          visitedPages.add(currentKey);
+
+          final rendered = await _fetchRendered(current);
+          if (rendered == null || rendered.trim().isEmpty) {
+            continue;
+          }
+
+          final doc = html_parser.parse(rendered);
+
+          final jobAnchors = doc
+              .querySelectorAll(
+                'h2.card-title a[href*="/jobs/"], a.stretched-link[href*="/jobs/"]',
+              )
+              .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+              .toList();
+
+          for (final anchor in jobAnchors) {
+            final href = (anchor.attributes['href'] ?? '').trim();
+            final jobUri = current.resolve(href);
+            final jobLink = jobUri.toString();
+            final title = normalize(anchor.text);
+            if (title.isEmpty) continue;
+
+            final parentText = normalize(anchor.parent?.text ?? '');
+            final grandParentText = normalize(
+              anchor.parent?.parent?.text ?? '',
+            );
+            final context = [
+              parentText,
+              grandParentText,
+            ].where((v) => v.isNotEmpty).join(' | ');
+
+            final searchable = [
+              title,
+              context,
+              jobLink,
+            ].where((v) => v.isNotEmpty).join(' | ').toLowerCase();
+
+            final exactWordMatch = matchTerms.any((kw) {
+              final pattern = RegExp(
+                '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+              );
+              return pattern.hasMatch(searchable);
+            });
+            if (!exactWordMatch &&
+                !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+                !fuzzyMatch(searchable, matchTerms)) {
+              continue;
+            }
+
+            final key = '${title.toLowerCase()}|${jobLink.toLowerCase()}';
+            if (seen.contains(key)) continue;
+            seen.add(key);
+
+            final location = parseLocation(context);
+            rows.add(
+              ScanResultRow(
+                company: companyName,
+                title: title,
+                companyUrl: careerUri.toString(),
+                applyLink: jobLink,
+                location: location.isEmpty ? 'Not specified' : location,
+                duration: parseDuration(context).$1,
+                deadline: '—',
+                source: 'GM Careers Search',
+                error: '',
+              ),
+            );
+          }
+
+          final pageLinks = doc
+              .querySelectorAll(
+                'ul.pagination a.page-link[href*="/jobs/"][href*="page="]',
+              )
+              .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+              .toList();
+
+          for (final link in pageLinks) {
+            final href = (link.attributes['href'] ?? '').trim();
+            final pageUri = current.resolve(href).replace(fragment: '');
+            final pageHost = pageUri.host.toLowerCase();
+            if (pageHost != host) continue;
+            final pageKey = pageUri.toString();
+            if (!visitedPages.contains(pageKey) &&
+                !pageQueue.any((u) => u.toString() == pageKey)) {
+              pageQueue.add(pageUri);
+            }
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('careers.ford.com') &&
+        careerUri.path.toLowerCase().contains('/search-jobs')) {
+      try {
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final visitedPages = <String>{};
+        final pageQueue = <Uri>[careerUri];
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        while (pageQueue.isNotEmpty && visitedPages.length < 25) {
+          final current = pageQueue.removeAt(0);
+          final currentKey = current.toString();
+          if (visitedPages.contains(currentKey)) {
+            continue;
+          }
+          visitedPages.add(currentKey);
+
+          final response = await _client
+              .get(
+                current,
+                headers: {
+                  'accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'user-agent':
+                      userAgents[DateTime.now().millisecond %
+                          userAgents.length],
+                },
+              )
+              .timeout(const Duration(seconds: 20));
+          if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+            continue;
+          }
+
+          final doc = html_parser.parse(response.body);
+
+          final jobAnchors = doc
+              .querySelectorAll('a[href*="/job/"]')
+              .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+              .toList();
+
+          for (final anchor in jobAnchors) {
+            final href = (anchor.attributes['href'] ?? '').trim();
+            final jobUri = current.resolve(href);
+            final jobLink = jobUri.toString();
+            final title = normalize(anchor.text);
+            if (title.isEmpty) continue;
+
+            final context = normalize(anchor.parent?.text ?? anchor.text);
+            final searchable = [
+              title,
+              context,
+              jobLink,
+            ].where((v) => v.isNotEmpty).join(' | ').toLowerCase();
+
+            final exactWordMatch = matchTerms.any((kw) {
+              final pattern = RegExp(
+                '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+              );
+              return pattern.hasMatch(searchable);
+            });
+            if (!exactWordMatch &&
+                !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+                !fuzzyMatch(searchable, matchTerms)) {
+              continue;
+            }
+
+            final key = '${title.toLowerCase()}|${jobLink.toLowerCase()}';
+            if (seen.contains(key)) continue;
+            seen.add(key);
+
+            rows.add(
+              ScanResultRow(
+                company: companyName,
+                title: title,
+                companyUrl: careerUri.toString(),
+                applyLink: jobLink,
+                location: parseLocation(context).isEmpty
+                    ? 'Not specified'
+                    : parseLocation(context),
+                duration: parseDuration(context).$1,
+                deadline: '—',
+                source: 'Ford Careers Search',
+                error: '',
+              ),
+            );
+          }
+
+          final pageLinks = doc
+              .querySelectorAll('a[href*="search-jobs"][href*="p="]')
+              .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+              .toList();
+          for (final link in pageLinks) {
+            final href = (link.attributes['href'] ?? '').trim();
+            final pageUri = current.resolve(href);
+            final pageKey = pageUri.toString();
+            if (!visitedPages.contains(pageKey) &&
+                !pageQueue.any((u) => u.toString() == pageKey)) {
+              pageQueue.add(pageUri);
+            }
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('finhaat.com') &&
+        careerUri.path.toLowerCase().contains('/careers')) {
+      try {
+        final response = await _client
+            .get(
+              careerUri,
+              headers: {
+                'accept':
+                    'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'user-agent':
+                    userAgents[DateTime.now().millisecond % userAgents.length],
+              },
+            )
+            .timeout(const Duration(seconds: 20));
+
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+          return const [];
+        }
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        String decodeSlugTitle(String slug) {
+          final clean = slug
+              .replaceAll('-', ' ')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+          if (clean.isEmpty) return clean;
+          return clean
+              .split(' ')
+              .where((w) => w.isNotEmpty)
+              .map((w) {
+                if (w.length <= 2) return w.toUpperCase();
+                return '${w[0].toUpperCase()}${w.substring(1)}';
+              })
+              .join(' ');
+        }
+
+        final doc = html_parser.parse(response.body);
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final anchors = doc
+            .querySelectorAll('a[href*="/careers/"]')
+            .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+            .toList();
+
+        for (final anchor in anchors) {
+          final href = (anchor.attributes['href'] ?? '').trim();
+          if (href.isEmpty || href.endsWith('/careers')) continue;
+
+          final applyUri = careerUri.resolve(href);
+          final applyPath = applyUri.path.toLowerCase();
+          if (!applyPath.contains('/careers/') || applyPath == '/careers') {
+            continue;
+          }
+
+          final segments = applyUri.pathSegments
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          if (segments.length < 2) continue;
+
+          final slug = segments.last;
+          if (slug.isEmpty || slug == 'careers') continue;
+
+          var title = normalize(
+            anchor.parent?.parent?.querySelector('h3, h4, h5, h6')?.text ?? '',
+          );
+          if (title.isEmpty || title.toLowerCase() == 'apply now') {
+            title = decodeSlugTitle(slug);
+          }
+          if (title.isEmpty) continue;
+
+          final applyLink = applyUri.toString();
+          final context = normalize(
+            anchor.parent?.parent?.text ?? anchor.parent?.text ?? anchor.text,
+          );
+          final searchable = [
+            title,
+            context,
+            applyLink,
+          ].where((v) => v.isNotEmpty).join(' | ').toLowerCase();
+
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: applyLink,
+              location: parseLocation(context).isEmpty
+                  ? 'Not specified'
+                  : parseLocation(context),
+              duration: parseDuration(context).$1,
+              deadline: '—',
+              source: 'Finhaat Careers HTML',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('jobs.fidelity.com') &&
+        careerUri.path.toLowerCase().contains('/ie/jobs')) {
+      try {
+        final response = await _client
+            .get(
+              Uri.https(careerUri.host, '/sitemap.xml'),
+              headers: {
+                'accept': 'application/xml,text/xml;q=0.9,*/*;q=0.8',
+                'user-agent':
+                    userAgents[DateTime.now().millisecond % userAgents.length],
+              },
+            )
+            .timeout(const Duration(seconds: 20));
+
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+          return const [];
+        }
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        String decodeSlugTitle(String slug) {
+          final clean = slug
+              .replaceAll('-', ' ')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+          if (clean.isEmpty) return clean;
+          return clean
+              .split(' ')
+              .where((w) => w.isNotEmpty)
+              .map((w) {
+                if (w.length <= 2) return w.toUpperCase();
+                return '${w[0].toUpperCase()}${w.substring(1)}';
+              })
+              .join(' ');
+        }
+
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final locMatches = RegExp(
+          r'<loc>([^<]+)</loc>',
+          caseSensitive: false,
+        ).allMatches(response.body);
+
+        for (final m in locMatches) {
+          final rawUrl = normalize(m.group(1) ?? '');
+          if (rawUrl.isEmpty) continue;
+
+          final uri = Uri.tryParse(rawUrl);
+          if (uri == null) continue;
+          if (uri.host.toLowerCase() != careerUri.host.toLowerCase()) continue;
+
+          final loweredPath = uri.path.toLowerCase();
+          if (!loweredPath.contains('/ie/jobs/')) continue;
+
+          final segments = uri.pathSegments
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          if (segments.length < 4) continue;
+
+          final slug = segments.last;
+          final title = decodeSlugTitle(slug);
+          if (title.isEmpty) continue;
+
+          final searchable = [title, rawUrl].join(' | ').toLowerCase();
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${rawUrl.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: rawUrl,
+              location: 'Not specified',
+              duration: 'Not specified',
+              deadline: '—',
+              source: 'Fidelity Jobs Sitemap',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('finbox.in') || host.contains('jobs.reczee.com')) {
+      try {
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        Uri boardUri = careerUri;
+        if (!host.contains('jobs.reczee.com')) {
+          final candidates = <Uri>{
+            careerUri,
+            Uri.https(careerUri.host, '/careers'),
+          };
+          if (careerUri.path.toLowerCase() == '/career') {
+            candidates.add(careerUri.replace(path: '/careers'));
+          }
+
+          final embedRegex = RegExp(
+            r'''https?://jobs\.reczee\.com/[^"'\s<>]+/job-embed''',
+            caseSensitive: false,
+          );
+
+          for (final uri in candidates) {
+            try {
+              final response = await _client
+                  .get(
+                    uri,
+                    headers: {
+                      'user-agent':
+                          userAgents[DateTime.now().millisecond %
+                              userAgents.length],
+                      'accept':
+                          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    },
+                  )
+                  .timeout(const Duration(seconds: 20));
+              if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+                continue;
+              }
+              final match = embedRegex.firstMatch(response.body);
+              if (match != null) {
+                final parsed = Uri.tryParse(match.group(0) ?? '');
+                if (parsed != null) {
+                  boardUri = parsed;
+                  break;
+                }
+              }
+            } catch (_) {
+              continue;
+            }
+          }
+
+          if (!boardUri.host.toLowerCase().contains('jobs.reczee.com')) {
+            boardUri = Uri.parse('https://jobs.reczee.com/finbox/job-embed');
+          }
+        }
+
+        String? html = await _fetchRendered(boardUri);
+        if (html == null || html.trim().isEmpty) {
+          pptr.Browser? browser;
+          try {
+            browser = await pptr.puppeteer
+                .launch(
+                  headless: true,
+                  args: const [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                  ],
+                )
+                .timeout(const Duration(seconds: 30));
+            final page = await browser.newPage().timeout(
+              const Duration(seconds: 15),
+            );
+            await page
+                .setUserAgent(
+                  userAgents[DateTime.now().millisecond % userAgents.length],
+                )
+                .timeout(const Duration(seconds: 5));
+            await page
+                .goto(boardUri.toString(), wait: pptr.Until.domContentLoaded)
+                .timeout(const Duration(seconds: 30));
+            await Future<void>.delayed(const Duration(seconds: 5));
+            html = await page.content.timeout(const Duration(seconds: 10));
+          } catch (_) {
+            html = null;
+          } finally {
+            await browser?.close();
+          }
+        }
+
+        if (html == null || html.trim().isEmpty) {
+          return const [];
+        }
+
+        final doc = html_parser.parse(html);
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final anchors = doc
+            .querySelectorAll('a[href*="/apply"]')
+            .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+            .toList();
+
+        for (final anchor in anchors) {
+          final href = (anchor.attributes['href'] ?? '').trim();
+          final applyLink = boardUri.resolve(href).toString();
+
+          html_dom.Element? cursor = anchor;
+          List<String> h6s = const [];
+          for (var depth = 0; depth < 8 && cursor != null; depth++) {
+            final collected = cursor
+                .querySelectorAll('h6')
+                .map((e) => normalize(e.text))
+                .where((t) => t.isNotEmpty)
+                .toList();
+            if (collected.isNotEmpty) {
+              h6s = collected;
+              break;
+            }
+            cursor = cursor.parent;
+          }
+
+          final title = h6s.isNotEmpty ? h6s.first : '';
+          if (title.isEmpty) continue;
+          final location = h6s.length >= 3 ? h6s[2] : 'Not specified';
+          final context = h6s.join(' | ');
+
+          final searchable = [
+            title,
+            location,
+            context,
+            applyLink,
+          ].where((v) => v.isNotEmpty).join(' | ').toLowerCase();
+
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: applyLink,
+              location: location,
+              duration: parseDuration(context).$1,
+              deadline: '—',
+              source: 'FinBox Reczee Careers',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('metacareers.com') &&
+        careerUri.path.toLowerCase().contains('/jobsearch')) {
+      try {
+        Future<String?> fetchMetaHtml(Uri uri) async {
+          String? rendered = await _fetchRendered(uri);
+          if (rendered == null || rendered.trim().isEmpty) {
+            pptr.Browser? browser;
+            try {
+              browser = await pptr.puppeteer
+                  .launch(
+                    headless: true,
+                    args: const [
+                      '--no-sandbox',
+                      '--disable-setuid-sandbox',
+                      '--disable-dev-shm-usage',
+                      '--disable-gpu',
+                    ],
+                  )
+                  .timeout(const Duration(seconds: 30));
+
+              final page = await browser.newPage().timeout(
+                const Duration(seconds: 15),
+              );
+              await page
+                  .setUserAgent(
+                    userAgents[DateTime.now().millisecond % userAgents.length],
+                  )
+                  .timeout(const Duration(seconds: 5));
+              await page
+                  .goto(uri.toString(), wait: pptr.Until.domContentLoaded)
+                  .timeout(const Duration(seconds: 30));
+              await Future<void>.delayed(const Duration(seconds: 4));
+              rendered = await page.content.timeout(
+                const Duration(seconds: 10),
+              );
+            } catch (_) {
+              rendered = null;
+            } finally {
+              await browser?.close();
+            }
+          }
+
+          if (rendered != null && rendered.trim().isNotEmpty) {
+            return rendered;
+          }
+          return await _fetch(uri);
+        }
+
+        var workingUri = careerUri;
+        final hasRoleFilter = careerUri.queryParameters.keys.any(
+          (k) => k == 'roles[0]' || k == 'roles',
+        );
+
+        String? html = await fetchMetaHtml(workingUri);
+        if ((html == null || html.trim().isEmpty) && !hasRoleFilter) {
+          final qp = <String, String>{...careerUri.queryParameters};
+          qp['roles[0]'] = 'Internship';
+          workingUri = careerUri.replace(queryParameters: qp);
+          html = await fetchMetaHtml(workingUri);
+        }
+        if (html == null || html.trim().isEmpty) {
+          return const [];
+        }
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        var doc = html_parser.parse(html);
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        var anchors = doc
+            .querySelectorAll('a[href*="/profile/job_details/"]')
+            .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+            .toList();
+
+        if (anchors.isEmpty && !hasRoleFilter) {
+          final qp = <String, String>{...careerUri.queryParameters};
+          qp['roles[0]'] = 'Internship';
+          workingUri = careerUri.replace(queryParameters: qp);
+          final filteredHtml = await fetchMetaHtml(workingUri);
+          if (filteredHtml != null && filteredHtml.trim().isNotEmpty) {
+            doc = html_parser.parse(filteredHtml);
+            anchors = doc
+                .querySelectorAll('a[href*="/profile/job_details/"]')
+                .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+                .toList();
+          }
+        }
+
+        for (final anchor in anchors) {
+          final href = (anchor.attributes['href'] ?? '').trim();
+          if (href.isEmpty) continue;
+
+          final applyLink = workingUri.resolve(href).toString();
+          var title = normalize(anchor.querySelector('h3')?.text ?? '');
+          if (title.isEmpty) {
+            title = normalize(anchor.text);
+          }
+          if (title.isEmpty) continue;
+
+          final location = normalize(anchor.querySelector('span')?.text ?? '');
+          final context = normalize(anchor.text);
+          final searchable = [
+            title,
+            location,
+            context,
+            applyLink,
+          ].where((v) => v.isNotEmpty).join(' | ').toLowerCase();
+
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: workingUri.toString(),
+              applyLink: applyLink,
+              location: location.isEmpty ? 'Not specified' : location,
+              duration: parseDuration(context).$1,
+              deadline: '—',
+              source: 'Meta Careers Job Search',
+              error: '',
+            ),
+          );
+        }
+
+        final wantsIntern = matchTerms.any(
+          (kw) => kw.toLowerCase().contains('intern'),
+        );
+        if (rows.isEmpty && !hasRoleFilter && wantsIntern) {
+          final qp = <String, String>{...careerUri.queryParameters};
+          qp['roles[0]'] = 'Internship';
+          final internshipUri = careerUri.replace(queryParameters: qp);
+          final internshipHtml = await fetchMetaHtml(internshipUri);
+          if (internshipHtml != null && internshipHtml.trim().isNotEmpty) {
+            final internshipDoc = html_parser.parse(internshipHtml);
+            final internshipAnchors = internshipDoc
+                .querySelectorAll('a[href*="/profile/job_details/"]')
+                .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+                .toList();
+
+            for (final anchor in internshipAnchors) {
+              final href = (anchor.attributes['href'] ?? '').trim();
+              if (href.isEmpty) continue;
+
+              final applyLink = internshipUri.resolve(href).toString();
+              var title = normalize(anchor.querySelector('h3')?.text ?? '');
+              if (title.isEmpty) {
+                title = normalize(anchor.text);
+              }
+              if (title.isEmpty) continue;
+
+              final location = normalize(
+                anchor.querySelector('span')?.text ?? '',
+              );
+              final context = normalize(anchor.text);
+              final searchable = [
+                title,
+                location,
+                context,
+                applyLink,
+              ].where((v) => v.isNotEmpty).join(' | ').toLowerCase();
+
+              final exactWordMatch = matchTerms.any((kw) {
+                final pattern = RegExp(
+                  '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+                );
+                return pattern.hasMatch(searchable);
+              });
+              if (!exactWordMatch &&
+                  !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+                  !fuzzyMatch(searchable, matchTerms)) {
+                continue;
+              }
+
+              final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+              if (seen.contains(key)) continue;
+              seen.add(key);
+
+              rows.add(
+                ScanResultRow(
+                  company: companyName,
+                  title: title,
+                  companyUrl: internshipUri.toString(),
+                  applyLink: applyLink,
+                  location: location.isEmpty ? 'Not specified' : location,
+                  duration: parseDuration(context).$1,
+                  deadline: '—',
+                  source: 'Meta Careers Job Search',
+                  error: '',
+                ),
+              );
+            }
+
+            if (rows.isNotEmpty) {
+              workingUri = internshipUri;
+              anchors = internshipAnchors;
+            }
+          }
+        }
+
+        if (anchors.isNotEmpty && rows.isEmpty) {
+          return [
+            ScanResultRow(
+              company: companyName,
+              title: 'No internship found',
+              companyUrl: workingUri.toString(),
+              applyLink: workingUri.toString(),
+              location: '—',
+              duration: '—',
+              deadline: '—',
+              source: 'Meta Careers Job Search',
+              error: '',
+            ),
+          ];
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('jobs.electriccapital.com')) {
+      try {
+        final response = await _client
+            .get(
+              Uri.https(careerUri.host, '/sitemap.xml'),
+              headers: {
+                'accept': 'application/xml,text/xml;q=0.9,*/*;q=0.8',
+                'user-agent':
+                    userAgents[DateTime.now().millisecond % userAgents.length],
+              },
+            )
+            .timeout(const Duration(seconds: 15));
+
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+          return const [];
+        }
+
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        String decodeSlugTitle(String slug) {
+          final clean = slug
+              .replaceAll('-', ' ')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+          if (clean.isEmpty) return clean;
+          return clean
+              .split(' ')
+              .where((w) => w.isNotEmpty)
+              .map((w) {
+                if (w.length <= 2) return w.toUpperCase();
+                return '${w[0].toUpperCase()}${w.substring(1)}';
+              })
+              .join(' ');
+        }
+
+        final locMatches = RegExp(
+          r'<loc>([^<]+)</loc>',
+          caseSensitive: false,
+        ).allMatches(response.body);
+
+        for (final m in locMatches) {
+          final url = normalize(m.group(1) ?? '');
+          if (url.isEmpty) continue;
+
+          final uri = Uri.tryParse(url);
+          if (uri == null) continue;
+          final segs = uri.pathSegments
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          if (segs.length < 4) continue;
+
+          final jobsIndex = segs.indexOf('jobs');
+          if (jobsIndex < 0 || jobsIndex + 1 >= segs.length) continue;
+          final slug = segs[jobsIndex + 1];
+          if (slug.isEmpty) continue;
+
+          final title = decodeSlugTitle(slug);
+          if (title.isEmpty) continue;
+
+          final searchable = [title, url].join(' | ').toLowerCase();
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${url.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: url,
+              location: 'Not specified',
+              duration: 'Not specified',
+              deadline: '—',
+              source: 'Electric Capital Sitemap',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('careers.etsy.com') &&
+        careerUri.path.toLowerCase().contains('/jobs/search')) {
+      try {
+        final response = await _client
+            .get(
+              Uri.https(careerUri.host, '/sitemap.xml'),
+              headers: {
+                'accept': 'application/xml,text/xml;q=0.9,*/*;q=0.8',
+                'user-agent':
+                    userAgents[DateTime.now().millisecond % userAgents.length],
+              },
+            )
+            .timeout(const Duration(seconds: 15));
+
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+          return const [];
+        }
+
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        String decodeSlugTitle(String slug) {
+          final clean = slug
+              .replaceAll('-', ' ')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+          if (clean.isEmpty) return clean;
+          return clean
+              .split(' ')
+              .where((w) => w.isNotEmpty)
+              .map((w) {
+                if (w.length <= 2) return w.toUpperCase();
+                return '${w[0].toUpperCase()}${w.substring(1)}';
+              })
+              .join(' ');
+        }
+
+        final locMatches = RegExp(
+          r'<loc>([^<]+)</loc>',
+          caseSensitive: false,
+        ).allMatches(response.body);
+
+        for (final m in locMatches) {
+          final url = normalize(m.group(1) ?? '');
+          if (url.isEmpty) continue;
+
+          final uri = Uri.tryParse(url);
+          if (uri == null) continue;
+          final segs = uri.pathSegments
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          if (segs.length < 2) continue;
+
+          final jobsIndex = segs.indexOf('jobs');
+          if (jobsIndex < 0 || jobsIndex + 1 >= segs.length) continue;
+          final slug = segs[jobsIndex + 1];
+          if (slug.isEmpty) continue;
+
+          final title = decodeSlugTitle(slug);
+          if (title.isEmpty) continue;
+
+          final searchable = [title, url].join(' | ').toLowerCase();
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${url.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: url,
+              location: 'Not specified',
+              duration: 'Not specified',
+              deadline: '—',
+              source: 'Etsy Careers Sitemap',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('careers.fabric.vc') &&
+        careerUri.path.toLowerCase().contains('/jobs')) {
+      try {
+        final rendered = await _fetchRendered(careerUri);
+        final html = (rendered != null && rendered.trim().isNotEmpty)
+            ? rendered
+            : await _fetch(careerUri);
+        if (html == null || html.trim().isEmpty) {
+          return const [];
+        }
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        final doc = html_parser.parse(html);
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final anchors = doc
+            .querySelectorAll('a[href]')
+            .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+            .toList();
+
+        for (final anchor in anchors) {
+          final href = (anchor.attributes['href'] ?? '').trim();
+          if (href.isEmpty ||
+              href.startsWith('#') ||
+              href.startsWith('javascript:') ||
+              href.startsWith('mailto:')) {
+            continue;
+          }
+
+          final applyLink = careerUri.resolve(href).toString();
+          final applyUri = Uri.tryParse(applyLink);
+          if (applyUri == null) continue;
+
+          final applyHost = applyUri.host.toLowerCase();
+          if (applyHost.contains('careers.fabric.vc') ||
+              applyHost.contains('fabric.vc') ||
+              applyHost.contains('consider.com')) {
+            continue;
+          }
+
+          final title = normalize(anchor.text);
+          if (title.isEmpty ||
+              title.length < 4 ||
+              title.toLowerCase() == 'apply' ||
+              title.toLowerCase() == 'show more jobs') {
+            continue;
+          }
+
+          final context = normalize(
+            anchor.parent?.parent?.text ?? anchor.parent?.text ?? anchor.text,
+          );
+          final searchable = [
+            title,
+            context,
+            applyLink,
+          ].where((v) => v.isNotEmpty).join(' | ').toLowerCase();
+
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: applyLink,
+              location: parseLocation(context).isEmpty
+                  ? 'Not specified'
+                  : parseLocation(context),
+              duration: parseDuration(context).$1,
+              deadline: '—',
+              source: 'Fabric Ventures Talent Board',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('yello.co') &&
+        careerUri.path.toLowerCase().contains('/job_boards/')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        if ((baseQuery['locale'] ?? '').trim().isEmpty) {
+          baseQuery['locale'] = 'en';
+        }
+
+        for (final term in matchTerms) {
+          final termQuery = Map<String, String>.from(baseQuery);
+          if ((termQuery['query'] ?? '').trim().isEmpty) {
+            termQuery['query'] = term;
+          }
+
+          var consecutiveNoHitPages = 0;
+          for (var page = 1; page <= 40; page++) {
+            final qp = Map<String, String>.from(termQuery)..['page'] = '$page';
+            final pageUri = Uri.https(careerUri.host, careerUri.path, qp);
+
+            final response = await _client
+                .get(
+                  pageUri,
+                  headers: {
+                    'accept':
+                        'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'user-agent':
+                        userAgents[DateTime.now().millisecond %
+                            userAgents.length],
+                  },
+                )
+                .timeout(const Duration(seconds: 15));
+
+            if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+              break;
+            }
+
+            final doc = html_parser.parse(response.body);
+            final anchors = doc
+                .querySelectorAll('a[href*="/jobs/"][href*="job_board_id="]')
+                .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+                .toList();
+
+            if (anchors.isEmpty) {
+              consecutiveNoHitPages += 1;
+              if (consecutiveNoHitPages >= 2) {
+                break;
+              }
+              continue;
+            }
+
+            var pageAdded = 0;
+            for (final a in anchors) {
+              final title = normalize(a.text);
+              if (title.isEmpty) continue;
+
+              final href = (a.attributes['href'] ?? '').trim();
+              final applyLink = pageUri.resolve(href).toString();
+
+              final context = normalize(
+                a.parent?.parent?.text ?? a.parent?.text ?? a.text,
+              );
+              final searchable = [
+                title,
+                context,
+                applyLink,
+              ].where((v) => v.isNotEmpty).join(' | ').toLowerCase();
+
+              final exactWordMatch = matchTerms.any((kw) {
+                final pattern = RegExp(
+                  '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+                );
+                return pattern.hasMatch(searchable);
+              });
+              if (!exactWordMatch &&
+                  !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+                  !fuzzyMatch(searchable, matchTerms)) {
+                continue;
+              }
+
+              final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+              if (seen.contains(key)) continue;
+              seen.add(key);
+              pageAdded += 1;
+
+              rows.add(
+                ScanResultRow(
+                  company: companyName,
+                  title: title,
+                  companyUrl: careerUri.toString(),
+                  applyLink: applyLink,
+                  location: 'Not specified',
+                  duration: parseDuration(context).$1,
+                  deadline: '—',
+                  source: 'EY Yello Job Board HTML',
+                  error: '',
+                ),
+              );
+            }
+
+            if (pageAdded == 0) {
+              consecutiveNoHitPages += 1;
+              if (consecutiveNoHitPages >= 2) {
+                break;
+              }
+            } else {
+              consecutiveNoHitPages = 0;
+            }
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('eigenlabs.org')) {
+      return await _fetchAshbyRows(
+        board: 'eigen-labs',
+        companyName: companyName,
+        careerUri: careerUri,
+        keywords: keywords,
+      );
+    }
+
+    if (host.contains('careers.lilly.com') &&
+        careerUri.path.toLowerCase().contains('/search-results')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final searchPath =
+            careerUri.path.toLowerCase().contains('/search-results')
+            ? careerUri.path
+            : '/us/en/search-results';
+
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        final requestedOffset = int.tryParse(baseQuery['from'] ?? '') ?? 0;
+        if ((baseQuery['s'] ?? '').trim().isEmpty) {
+          baseQuery['s'] = '1';
+        }
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        var offset = requestedOffset < 0 ? 0 : requestedOffset;
+        var pageSize = 10;
+        int? totalHits;
+
+        for (var page = 0; page < 250; page++) {
+          final qp = Map<String, String>.from(baseQuery);
+          if (offset > 0) {
+            qp['from'] = '$offset';
+          } else {
+            qp.remove('from');
+          }
+
+          final pageUri = Uri.https(
+            careerUri.host,
+            searchPath,
+            qp.isEmpty ? null : qp,
+          );
+
+          final response = await _client
+              .get(
+                pageUri,
+                headers: {
+                  'accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'user-agent':
+                      userAgents[DateTime.now().millisecond %
+                          userAgents.length],
+                },
+              )
+              .timeout(const Duration(seconds: 15));
+
+          if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+            break;
+          }
+
+          final eagerJson = _extractJsonObjectValueByKey(
+            response.body,
+            'eagerLoadRefineSearch',
+          );
+          if (eagerJson == null || eagerJson.trim().isEmpty) {
+            break;
+          }
+
+          final eagerDecoded = jsonDecode(eagerJson);
+          if (eagerDecoded is! Map) {
+            break;
+          }
+
+          final eager = eagerDecoded.map((k, v) => MapEntry('$k', v));
+          final parsedTotalHits = int.tryParse('${eager['totalHits'] ?? ''}');
+          if (parsedTotalHits != null && parsedTotalHits > 0) {
+            totalHits = parsedTotalHits;
+          }
+
+          final data = eager['data'];
+          if (data is! Map) {
+            break;
+          }
+
+          final jobs = data['jobs'];
+          if (jobs is! List || jobs.isEmpty) {
+            break;
+          }
+
+          pageSize = jobs.length;
+
+          for (final rawJob in jobs.whereType<Map>()) {
+            final job = rawJob.map((k, v) => MapEntry('$k', v));
+            final title = normalize((job['title'] ?? '').toString());
+            if (title.isEmpty) continue;
+
+            final applyLink = normalize((job['applyUrl'] ?? '').toString());
+            if (applyLink.isEmpty) continue;
+
+            final location = normalize(
+              (job['location'] ??
+                      job['cityStateCountry'] ??
+                      job['cityState'] ??
+                      job['city'] ??
+                      '')
+                  .toString(),
+            );
+            final description = normalize(
+              (job['descriptionTeaser'] ??
+                      job['description'] ??
+                      (job['ml_job_parser'] is Map
+                          ? (job['ml_job_parser'] as Map)['descriptionTeaser']
+                          : '') ??
+                      '')
+                  .toString(),
+            );
+            final postedDate = normalize((job['postedDate'] ?? '').toString());
+
+            final searchable = [
+              title,
+              location,
+              description,
+              applyLink,
+            ].where((v) => v.isNotEmpty).join(' | ').toLowerCase();
+
+            final titleLower = title.toLowerCase();
+            final exactWordMatch = matchTerms.any((kw) {
+              final pattern = RegExp(
+                '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+              );
+              return pattern.hasMatch(searchable);
+            });
+            if (!exactWordMatch &&
+                !fuzzyMatch(titleLower, matchTerms) &&
+                !fuzzyMatch(searchable, matchTerms)) {
+              continue;
+            }
+
+            final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+            if (seen.contains(key)) continue;
+            seen.add(key);
+
+            rows.add(
+              ScanResultRow(
+                company: companyName,
+                title: title,
+                companyUrl: careerUri.toString(),
+                applyLink: applyLink,
+                location: location.isEmpty ? 'Not specified' : location,
+                duration: parseDuration('$description $postedDate').$1,
+                deadline: '—',
+                source: 'Lilly Phenom Search Results',
+                error: '',
+              ),
+            );
+          }
+
+          if (pageSize <= 0) {
+            break;
+          }
+
+          if (totalHits != null && totalHits! > 0) {
+            final maxOffset = totalHits! - pageSize;
+            if (offset >= maxOffset) {
+              break;
+            }
+          }
+
+          offset += pageSize;
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('jobs.ebayinc.com') &&
+        careerUri.path.toLowerCase().contains('/search-results')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final searchPath =
+            careerUri.path.toLowerCase().contains('/search-results')
+            ? careerUri.path
+            : '/us/en/search-results';
+
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        final requestedOffset = int.tryParse(baseQuery['from'] ?? '') ?? 0;
+        if ((baseQuery['s'] ?? '').trim().isEmpty) {
+          baseQuery['s'] = '1';
+        }
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        var offset = requestedOffset < 0 ? 0 : requestedOffset;
+        var pageSize = 10;
+        int? totalHits;
+
+        for (var page = 0; page < 250; page++) {
+          final qp = Map<String, String>.from(baseQuery);
+          if (offset > 0) {
+            qp['from'] = '$offset';
+          } else {
+            qp.remove('from');
+          }
+
+          final pageUri = Uri.https(
+            careerUri.host,
+            searchPath,
+            qp.isEmpty ? null : qp,
+          );
+
+          final response = await _client
+              .get(
+                pageUri,
+                headers: {
+                  'accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'user-agent':
+                      userAgents[DateTime.now().millisecond %
+                          userAgents.length],
+                },
+              )
+              .timeout(const Duration(seconds: 15));
+
+          if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+            break;
+          }
+
+          final eagerJson = _extractJsonObjectValueByKey(
+            response.body,
+            'eagerLoadRefineSearch',
+          );
+          if (eagerJson == null || eagerJson.trim().isEmpty) {
+            break;
+          }
+
+          final eagerDecoded = jsonDecode(eagerJson);
+          if (eagerDecoded is! Map) {
+            break;
+          }
+
+          final eager = eagerDecoded.map((k, v) => MapEntry('$k', v));
+          final parsedTotalHits = int.tryParse('${eager['totalHits'] ?? ''}');
+          if (parsedTotalHits != null && parsedTotalHits > 0) {
+            totalHits = parsedTotalHits;
+          }
+
+          final data = eager['data'];
+          if (data is! Map) {
+            break;
+          }
+
+          final jobs = data['jobs'];
+          if (jobs is! List || jobs.isEmpty) {
+            break;
+          }
+
+          pageSize = jobs.length;
+
+          for (final rawJob in jobs.whereType<Map>()) {
+            final job = rawJob.map((k, v) => MapEntry('$k', v));
+            final title = normalize((job['title'] ?? '').toString());
+            if (title.isEmpty) continue;
+
+            final applyLink = normalize((job['applyUrl'] ?? '').toString());
+            if (applyLink.isEmpty) continue;
+
+            final location = normalize(
+              (job['location'] ??
+                      job['cityStateCountry'] ??
+                      job['cityState'] ??
+                      job['city'] ??
+                      '')
+                  .toString(),
+            );
+            final description = normalize(
+              (job['descriptionTeaser'] ??
+                      job['description'] ??
+                      (job['ml_job_parser'] is Map
+                          ? (job['ml_job_parser'] as Map)['descriptionTeaser']
+                          : '') ??
+                      '')
+                  .toString(),
+            );
+            final postedDate = normalize((job['postedDate'] ?? '').toString());
+
+            final searchable = [
+              title,
+              location,
+              description,
+              applyLink,
+            ].where((v) => v.isNotEmpty).join(' | ').toLowerCase();
+
+            final titleLower = title.toLowerCase();
+            final exactWordMatch = matchTerms.any((kw) {
+              final pattern = RegExp(
+                '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+              );
+              return pattern.hasMatch(searchable);
+            });
+            if (!exactWordMatch &&
+                !fuzzyMatch(titleLower, matchTerms) &&
+                !fuzzyMatch(searchable, matchTerms)) {
+              continue;
+            }
+
+            final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+            if (seen.contains(key)) continue;
+            seen.add(key);
+
+            rows.add(
+              ScanResultRow(
+                company: companyName,
+                title: title,
+                companyUrl: careerUri.toString(),
+                applyLink: applyLink,
+                location: location.isEmpty ? 'Not specified' : location,
+                duration: parseDuration('$description $postedDate').$1,
+                deadline: '—',
+                source: 'eBay Phenom Search Results',
+                error: '',
+              ),
+            );
+          }
+
+          if (pageSize <= 0) {
+            break;
+          }
+
+          if (totalHits != null && totalHits! > 0) {
+            final maxOffset = totalHits! - pageSize;
+            if (offset >= maxOffset) {
+              break;
+            }
+          }
+
+          offset += pageSize;
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('zohorecruit.in') &&
+        careerUri.path.toLowerCase().contains('/jobs/careers')) {
+      try {
+        final response = await _client
+            .get(
+              careerUri,
+              headers: {
+                'accept':
+                    'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'user-agent':
+                    userAgents[DateTime.now().millisecond % userAgents.length],
+              },
+            )
+            .timeout(const Duration(seconds: 15));
+
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+          return const [];
+        }
+
+        final document = html_parser.parse(response.body);
+        final jobsAttrValue =
+            document.querySelector('input#jobs')?.attributes['value'] ?? '';
+        if (jobsAttrValue.isEmpty) {
+          return const [];
+        }
+
+        final decodedJobsJson = _decodeHtmlAttributeValue(jobsAttrValue);
+        if (decodedJobsJson.isEmpty) {
+          return const [];
+        }
+
+        final parsed = jsonDecode(decodedJobsJson);
+        if (parsed is! List) {
+          return const [];
+        }
+
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        bool matchesKeyword(String searchable, String title) {
+          final searchableLower = searchable.toLowerCase();
+          final titleLower = title.toLowerCase();
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchableLower);
+          });
+          return exactWordMatch ||
+              fuzzyMatch(titleLower, matchTerms) ||
+              fuzzyMatch(searchableLower, matchTerms);
+        }
+
+        for (final item in parsed.whereType<Map>()) {
+          final map = item.map((k, v) => MapEntry(k.toString(), v));
+          final isPublished = map['Publish'] == true;
+          if (!isPublished) continue;
+
+          final title = normalize(
+            (map['Posting_Title'] ?? map['Job_Opening_Name'] ?? '').toString(),
+          );
+          if (title.isEmpty) continue;
+
+          final city = normalize((map['City'] ?? '').toString());
+          final state = normalize((map['State'] ?? '').toString());
+          final country = normalize((map['Country'] ?? '').toString());
+          final remote = map['Remote_Job'] == true;
+
+          final locationParts = <String>[];
+          if (city.isNotEmpty && city.toLowerCase() != 'na') {
+            locationParts.add(city);
+          }
+          if (state.isNotEmpty && state.toLowerCase() != 'na') {
+            locationParts.add(state);
+          }
+          if (country.isNotEmpty && country.toLowerCase() != 'na') {
+            locationParts.add(country);
+          }
+          if (remote) {
+            locationParts.add('Remote');
+          }
+          final location = locationParts.isNotEmpty
+              ? locationParts.join(', ')
+              : 'Not specified';
+
+          final jobId = normalize((map['id'] ?? '').toString());
+          final applyLink = jobId.isNotEmpty
+              ? Uri.https(careerUri.host, '/jobs/Careers/$jobId').toString()
+              : careerUri.toString();
+          final description = normalize(
+            _decodeHtmlAttributeValue(
+              (map['Job_Description'] ?? '').toString(),
+            ),
+          );
+
+          final searchable = [
+            title,
+            location,
+            applyLink,
+            description,
+          ].where((v) => v.isNotEmpty).join(' | ');
+          if (!matchesKeyword(searchable, title)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: applyLink,
+              location: location,
+              duration: parseDuration(description).$1,
+              deadline: '—',
+              source: 'Zoho Recruit Careers JSON',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('dydx.exchange') &&
+        careerUri.path.toLowerCase().contains('/careers')) {
+      try {
+        final source = Uri.parse(
+          'https://api.gem.com/job_board/v0/dydx/job_posts/',
+        );
+        final response = await _client
+            .get(
+              source,
+              headers: const {'accept': 'application/json, text/plain, */*'},
+            )
+            .timeout(const Duration(seconds: 15));
+
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+          return const [];
+        }
+
+        final decoded = jsonDecode(response.body);
+        if (decoded is! List) {
+          return const [];
+        }
+
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        for (final item in decoded.whereType<Map>()) {
+          final map = item.map((k, v) => MapEntry(k.toString(), v));
+          final title = normalize((map['title'] ?? '').toString());
+          if (title.isEmpty) continue;
+
+          String location = 'Not specified';
+          final locationObj = map['location'];
+          if (locationObj is Map) {
+            final loc = locationObj.map((k, v) => MapEntry(k.toString(), v));
+            final locName = normalize((loc['name'] ?? '').toString());
+            if (locName.isNotEmpty) {
+              location = locName;
+            }
+          } else {
+            final locText = normalize(locationObj?.toString() ?? '');
+            if (locText.isNotEmpty) {
+              location = locText;
+            }
+          }
+
+          final content = normalize((map['content'] ?? '').toString());
+          final applyLink = normalize((map['absolute_url'] ?? '').toString());
+
+          final searchable = [
+            title,
+            location,
+            applyLink,
+          ].where((v) => v.trim().isNotEmpty).join(' | ').toLowerCase();
+
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
+
+          final resolvedApplyLink = applyLink.isNotEmpty
+              ? applyLink
+              : careerUri.toString();
+          final key =
+              '${title.toLowerCase()}|${resolvedApplyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: resolvedApplyLink,
+              location: location,
+              duration: parseDuration(content).$1,
+              deadline: '—',
+              source: 'Gem Job Board API',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('southasiacareers.deloitte.com') &&
+        careerUri.path.toLowerCase().contains('/go/')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final segments = careerUri.pathSegments
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+        if (segments.length < 3 || segments.first.toLowerCase() != 'go') {
+          return const [];
+        }
+
+        final baseSegments = segments.take(3).toList();
+        final basePath = '/${baseSegments.join('/')}';
+        final qp = Map<String, String>.from(careerUri.queryParameters);
+        final requestedOffset = segments.length >= 4
+            ? int.tryParse(segments[3]) ?? 0
+            : 0;
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        int extractTotalPages(String html) {
+          final pageOfMatch = RegExp(
+            r'Page\s*\d+\s*of\s*(\d+)',
+            caseSensitive: false,
+          ).firstMatch(html);
+          final fromPageOf = int.tryParse(pageOfMatch?.group(1) ?? '');
+          if (fromPageOf != null && fromPageOf > 0) {
+            return fromPageOf;
+          }
+
+          final lastHref = RegExp(
+            r'class="paginationItemLast"[^>]*href="([^"]+)"',
+            caseSensitive: false,
+          ).firstMatch(html);
+          final href = lastHref?.group(1) ?? '';
+          if (href.isNotEmpty) {
+            final uri = careerUri.resolve(href);
+            final parts = uri.pathSegments
+                .map((s) => s.trim())
+                .where((s) => s.isNotEmpty)
+                .toList();
+            if (parts.length >= 4) {
+              final maxOffset = int.tryParse(parts[3]) ?? 0;
+              if (maxOffset >= 0) {
+                return (maxOffset ~/ 25) + 1;
+              }
+            }
+          }
+
+          return 1;
+        }
+
+        bool matches(String title, String location, String rowText) {
+          final searchable = [
+            title,
+            location,
+            rowText,
+          ].where((s) => s.trim().isNotEmpty).join(' | ').toLowerCase();
+          final titleLower = title.toLowerCase();
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          return exactWordMatch ||
+              fuzzyMatch(titleLower, matchTerms) ||
+              fuzzyMatch(searchable, matchTerms);
+        }
+
+        for (final term in matchTerms) {
+          final baseQuery = Map<String, String>.from(qp);
+          if ((baseQuery['q'] ?? '').trim().isEmpty) {
+            baseQuery['q'] = term;
+          }
+
+          final firstPath = requestedOffset > 0
+              ? '$basePath/$requestedOffset/'
+              : '$basePath/';
+          final firstUri = Uri.https(
+            careerUri.host,
+            firstPath,
+            baseQuery.isEmpty ? null : baseQuery,
+          );
+          final firstResponse = await _client
+              .get(
+                firstUri,
+                headers: {
+                  'accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'user-agent':
+                      userAgents[DateTime.now().millisecond %
+                          userAgents.length],
+                },
+              )
+              .timeout(const Duration(seconds: 15));
+
+          if (firstResponse.statusCode >= 400 ||
+              firstResponse.body.trim().isEmpty) {
+            continue;
+          }
+
+          final maxPages = extractTotalPages(firstResponse.body);
+          final pageSize = RegExp(
+            'class="data-row"',
+            caseSensitive: false,
+          ).allMatches(firstResponse.body).length;
+          final effectivePageSize = pageSize > 0 ? pageSize : 25;
+
+          for (var page = 1; page <= maxPages && page <= 220; page++) {
+            final offset = ((page - 1) * effectivePageSize) + requestedOffset;
+            final path = offset > 0 ? '$basePath/$offset/' : '$basePath/';
+            final pageUri = Uri.https(
+              careerUri.host,
+              path,
+              baseQuery.isEmpty ? null : baseQuery,
+            );
+
+            final response = page == 1 && requestedOffset == 0
+                ? firstResponse
+                : await _client
+                      .get(
+                        pageUri,
+                        headers: {
+                          'accept':
+                              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                          'user-agent':
+                              userAgents[DateTime.now().millisecond %
+                                  userAgents.length],
+                        },
+                      )
+                      .timeout(const Duration(seconds: 15));
+
+            if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+              if (page == 1) {
+                break;
+              }
+              continue;
+            }
+
+            final doc = html_parser.parse(response.body);
+            final jobRows = doc.querySelectorAll('tr.data-row');
+            if (jobRows.isEmpty) {
+              break;
+            }
+
+            var pageAdded = 0;
+            for (final jobRow in jobRows) {
+              final linkEl = jobRow.querySelector('a.jobTitle-link');
+              final href = (linkEl?.attributes['href'] ?? '').trim();
+              final title = normalize(linkEl?.text ?? '');
+              if (title.isEmpty || href.isEmpty) continue;
+
+              final location = normalize(
+                jobRow.querySelector('.colLocation .jobLocation')?.text ??
+                    jobRow.querySelector('.visible-phone .jobLocation')?.text ??
+                    '',
+              );
+              final rowText = normalize(jobRow.text);
+              if (!matches(title, location, rowText)) {
+                continue;
+              }
+
+              final applyLink = pageUri.resolve(href).toString();
+              final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+              if (seen.contains(key)) continue;
+              seen.add(key);
+              pageAdded += 1;
+
+              rows.add(
+                ScanResultRow(
+                  company: companyName,
+                  title: title,
+                  companyUrl: careerUri.toString(),
+                  applyLink: applyLink,
+                  location: location.isEmpty ? 'Not specified' : location,
+                  duration: parseDuration(rowText).$1,
+                  deadline: '—',
+                  source: 'Deloitte South Asia Careers HTML',
+                  error: '',
+                ),
+              );
+            }
+
+            if (pageAdded == 0 && page > 1) {
+              break;
+            }
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('cybrilla.com') &&
+        careerUri.path.toLowerCase().contains('/careers')) {
+      try {
+        final response = await _client
+            .get(
+              Uri.parse('https://app.recruiterbox.com/widget/5346/openings/'),
+              headers: const {'accept': 'application/json, text/plain, */*'},
+            )
+            .timeout(const Duration(seconds: 15));
+
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+          return const [];
+        }
+
+        final decoded = jsonDecode(response.body);
+        if (decoded is! List) {
+          return const [];
+        }
+
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        for (final item in decoded.whereType<Map>()) {
+          final map = item.map((k, v) => MapEntry(k.toString(), v));
+          final title = (map['title'] ?? '').toString().trim();
+          if (title.isEmpty) continue;
+
+          final description = (map['description'] ?? '').toString().trim();
+          final team = (map['team'] ?? '').toString().trim();
+          final positionType = (map['position_type'] ?? '').toString().trim();
+
+          String location = 'Not specified';
+          final locationObj = map['location'];
+          if (locationObj is Map) {
+            final loc = locationObj.map((k, v) => MapEntry(k.toString(), v));
+            final city = (loc['city'] ?? '').toString().trim();
+            final state = (loc['state'] ?? '').toString().trim();
+            final country = (loc['country'] ?? '').toString().trim();
+            final parts = [
+              city,
+              state,
+              country,
+            ].where((v) => v.isNotEmpty).toList();
+            if (parts.isNotEmpty) {
+              location = parts.join(', ');
+            }
+          }
+
+          final searchable = [
+            title,
+            description,
+            team,
+            positionType,
+            location,
+          ].where((v) => v.trim().isNotEmpty).join(' | ').toLowerCase();
+
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
+
+          final hashId = (map['hash_id'] ?? '').toString().trim();
+          final applyLink = hashId.isNotEmpty
+              ? 'https://cybrilla.recruiterbox.com/jobs/$hashId'
+              : careerUri.toString();
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: applyLink,
+              location: location,
+              duration: parseDuration('$description $positionType').$1,
+              deadline: '—',
+              source: 'Recruiterbox API',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('dapperlabs.com') &&
+        careerUri.path.toLowerCase().contains('/careers')) {
+      try {
+        final source = Uri.parse(
+          'https://careers.kula.ai/dapperlabs?jobs=true',
+        );
+        final response = await _client
+            .get(
+              source,
+              headers: const {
+                'accept':
+                    'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              },
+            )
+            .timeout(const Duration(seconds: 15));
+
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+          return const [];
+        }
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        final doc = html_parser.parse(response.body);
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final applyAnchors = doc
+            .querySelectorAll('a[href*="/dapperlabs/"]')
+            .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+            .toList();
+
+        for (final anchor in applyAnchors) {
+          final href = (anchor.attributes['href'] ?? '').trim();
+          final applyLink = source.resolve(href).toString();
+
+          html_dom.Element? container = anchor;
+          String title = '';
+          String cardText = '';
+          for (var i = 0; i < 10 && container != null; i++) {
+            final t = normalize(
+              container.querySelector('p.css-hqxkdi')?.text ??
+                  container.querySelector('h3')?.text ??
+                  '',
+            );
+            if (t.isNotEmpty) {
+              title = t;
+              cardText = normalize(container.text);
+              break;
+            }
+            container = container.parent;
+          }
+
+          if (title.isEmpty) continue;
+          final searchable = [
+            title,
+            cardText,
+            applyLink,
+          ].where((v) => v.trim().isNotEmpty).join(' | ').toLowerCase();
+
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          final location = parseLocation(cardText);
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: applyLink,
+              location: location.isEmpty ? 'Not specified' : location,
+              duration: parseDuration(cardText).$1,
+              deadline: '—',
+              source: 'Kula Careers HTML',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('instahyre.com') &&
+        careerUri.path.toLowerCase().contains('/jobs-at-')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final rendered = await _fetchRendered(careerUri);
+        final html = (rendered != null && rendered.trim().isNotEmpty)
+            ? rendered
+            : await _fetch(careerUri);
+        if (html == null || html.trim().isEmpty) {
+          return const [];
+        }
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        final doc = html_parser.parse(html);
+        final anchors = doc
+            .querySelectorAll('a[href*="/job-"]')
+            .where((a) => (a.attributes['href'] ?? '').trim().isNotEmpty)
+            .toList();
+
+        for (final anchor in anchors) {
+          final href = (anchor.attributes['href'] ?? '').trim();
+          if (href.isEmpty) continue;
+
+          final applyLink = careerUri.resolve(href).toString();
+          final title = normalize(anchor.text);
+          if (title.isEmpty || title.toLowerCase() == 'employer logo') {
+            continue;
+          }
+
+          final cardText = normalize(anchor.parent?.text ?? anchor.text);
+          final searchable = [
+            title,
+            cardText,
+            applyLink,
+          ].where((v) => v.trim().isNotEmpty).join(' | ').toLowerCase();
+
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          final location = parseLocation(cardText);
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: applyLink,
+              location: location.isEmpty ? 'Not specified' : location,
+              duration: parseDuration(cardText).$1,
+              deadline: '—',
+              source: 'Instahyre Careers HTML',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('notion.site')) {
+      try {
+        final rendered = await _fetchRendered(careerUri);
+        final html = (rendered != null && rendered.trim().isNotEmpty)
+            ? rendered
+            : await _fetch(careerUri);
+        if (html == null || html.trim().isEmpty) {
+          return const [];
+        }
+
+        String normalize(String value) {
+          return value.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        final doc = html_parser.parse(html);
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        bool matchesKeyword(String searchable, String titleLower) {
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (exactWordMatch) return true;
+          if (fuzzyMatch(titleLower, matchTerms)) return true;
+          return fuzzyMatch(searchable, matchTerms);
+        }
+
+        final anchors = doc.querySelectorAll('a[href]');
+        for (final a in anchors) {
+          final href = (a.attributes['href'] ?? '').trim();
+          if (href.isEmpty ||
+              href.startsWith('#') ||
+              href.startsWith('javascript:') ||
+              href.startsWith('mailto:')) {
+            continue;
+          }
+
+          final title = normalize(a.text);
+          if (title.isEmpty) continue;
+
+          final applyLink = careerUri.resolve(href).toString();
+          final cardText = normalize(
+            a.parent?.parent?.text ?? a.parent?.text ?? a.text,
+          );
+          final searchable = [
+            title,
+            cardText,
+            applyLink,
+          ].where((v) => v.trim().isNotEmpty).join(' | ').toLowerCase();
+
+          final titleLower = title.toLowerCase();
+          if (!matchesKeyword(searchable, titleLower)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          final location = parseLocation(cardText);
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: applyLink,
+              location: location.isEmpty ? 'Not specified' : location,
+              duration: parseDuration(cardText).$1,
+              deadline: '—',
+              source: 'Notion Careers Page',
+              error: '',
+            ),
+          );
+        }
+
+        if (rows.isNotEmpty) {
+          return rows;
+        }
+
+        final headings = doc.querySelectorAll('h1,h2,h3');
+        for (final h in headings) {
+          final title = normalize(h.text);
+          if (title.isEmpty) continue;
+          final searchable = title.toLowerCase();
+          if (!matchesKeyword(searchable, searchable)) continue;
+
+          final key =
+              '${title.toLowerCase()}|${careerUri.toString().toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: careerUri.toString(),
+              location: 'Not specified',
+              duration: 'Not specified',
+              deadline: '—',
+              source: 'Notion Careers Page',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('chaoslabs.xyz')) {
+      try {
+        final pageResponse = await _client
+            .get(
+              careerUri,
+              headers: {
+                'accept':
+                    'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'user-agent':
+                    userAgents[DateTime.now().millisecond % userAgents.length],
+              },
+            )
+            .timeout(const Duration(seconds: 12));
+
+        if (pageResponse.statusCode >= 400 ||
+            pageResponse.body.trim().isEmpty) {
+          return const [];
+        }
+
+        final endpointMatch = RegExp(
+          r'https://www\.comeet\.co/careers-api/2\.0/company/([A-Za-z0-9\.\-]+)/positions/[A-Za-z0-9\.\-]+\?token=([A-Za-z0-9]+)',
+          caseSensitive: false,
+        ).firstMatch(pageResponse.body);
+
+        if (endpointMatch == null) {
+          return const [];
+        }
+
+        final companyId = endpointMatch.group(1)?.trim() ?? '';
+        final token = endpointMatch.group(2)?.trim() ?? '';
+        if (companyId.isEmpty || token.isEmpty) {
+          return const [];
+        }
+
+        final listUri = Uri.parse(
+          'https://www.comeet.co/careers-api/2.0/company/$companyId/positions?token=$token',
+        );
+
+        final response = await _client
+            .get(
+              listUri,
+              headers: const {'accept': 'application/json, text/plain, */*'},
+            )
+            .timeout(const Duration(seconds: 12));
+
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+          return const [];
+        }
+
+        final decoded = jsonDecode(response.body);
+        if (decoded is! List) {
+          return const [];
+        }
+
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        for (final item in decoded.whereType<Map>()) {
+          final map = item.map((k, v) => MapEntry(k.toString(), v));
+
+          final title = (map['name'] ?? '').toString().trim();
+          if (title.isEmpty) continue;
+
+          final department = (map['department'] ?? '').toString().trim();
+          final experienceLevel = (map['experience_level'] ?? '')
+              .toString()
+              .trim();
+          final employmentType = (map['employment_type'] ?? '')
+              .toString()
+              .trim();
+
+          final combined = '$title $department $experienceLevel $employmentType'
+              .toLowerCase();
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(combined);
+          });
+          if (!exactWordMatch && !fuzzyMatch(title.toLowerCase(), matchTerms)) {
+            continue;
+          }
+
+          final locationObj = map['location'];
+          var location = '';
+          if (locationObj is Map) {
+            final loc = locationObj.map((k, v) => MapEntry(k.toString(), v));
+            location = (loc['name'] ?? loc['city'] ?? loc['country'] ?? '')
+                .toString();
+          }
+          location = location.trim();
+
+          final applyLink =
+              (map['url_active_page'] ??
+                      map['url_comeet_hosted_page'] ??
+                      map['url_recruit_hosted_page'] ??
+                      careerUri.toString())
+                  .toString()
+                  .trim();
+
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: applyLink,
+              location: location.isEmpty ? 'Not specified' : location,
+              duration: parseDuration(title).$1,
+              deadline: '—',
+              source: 'Comeet API',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('etoro.com') &&
+        careerUri.path.toLowerCase().contains('/about/careers')) {
+      try {
+        final pageResponse = await _client
+            .get(
+              careerUri,
+              headers: {
+                'accept':
+                    'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'user-agent':
+                    userAgents[DateTime.now().millisecond % userAgents.length],
+              },
+            )
+            .timeout(const Duration(seconds: 12));
+
+        if (pageResponse.statusCode >= 400 ||
+            pageResponse.body.trim().isEmpty) {
+          return const [];
+        }
+
+        final token = RegExp(
+          r'"token"\s*:\s*"([A-Za-z0-9]+)"',
+          caseSensitive: false,
+        ).firstMatch(pageResponse.body)?.group(1)?.trim();
+        final companyUid = RegExp(
+          r'"company-uid"\s*:\s*"([A-Za-z0-9\.\-]+)"',
+          caseSensitive: false,
+        ).firstMatch(pageResponse.body)?.group(1)?.trim();
+
+        if (token == null ||
+            token.isEmpty ||
+            companyUid == null ||
+            companyUid.isEmpty) {
+          return const [];
+        }
+
+        final listUri = Uri.parse(
+          'https://www.comeet.co/careers-api/2.0/company/$companyUid/positions?token=$token',
+        );
+
+        final response = await _client
+            .get(
+              listUri,
+              headers: const {'accept': 'application/json, text/plain, */*'},
+            )
+            .timeout(const Duration(seconds: 12));
+
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+          return const [];
+        }
+
+        final decoded = jsonDecode(response.body);
+        if (decoded is! List) {
+          return const [];
+        }
+
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        for (final item in decoded.whereType<Map>()) {
+          final map = item.map((k, v) => MapEntry(k.toString(), v));
+
+          final title = normalize((map['name'] ?? '').toString());
+          if (title.isEmpty) continue;
+
+          final department = normalize((map['department'] ?? '').toString());
+          final experienceLevel = normalize(
+            (map['experience_level'] ?? '').toString(),
+          );
+          final employmentType = normalize(
+            (map['employment_type'] ?? '').toString(),
+          );
+
+          String location = 'Not specified';
+          final locationObj = map['location'];
+          if (locationObj is Map) {
+            final loc = locationObj.map((k, v) => MapEntry(k.toString(), v));
+            final locText = normalize(
+              (loc['name'] ?? loc['city'] ?? loc['country'] ?? '').toString(),
+            );
+            if (locText.isNotEmpty) {
+              location = locText;
+            }
+          }
+
+          final applyLink = normalize(
+            (map['url_active_page'] ??
+                    map['url_comeet_hosted_page'] ??
+                    map['url_recruit_hosted_page'] ??
+                    careerUri.toString())
+                .toString(),
+          );
+
+          final searchable = [
+            title,
+            department,
+            experienceLevel,
+            employmentType,
+            location,
+            applyLink,
+          ].where((v) => v.isNotEmpty).join(' | ').toLowerCase();
+
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\b${RegExp.escape(kw.toLowerCase())}\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch && !fuzzyMatch(title.toLowerCase(), matchTerms)) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: applyLink,
+              location: location,
+              duration: parseDuration(
+                '$department $experienceLevel $employmentType',
+              ).$1,
+              deadline: '—',
+              source: 'eToro Comeet API',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
 
     if (host.contains('chainlinklabs.com')) {
       try {
@@ -904,7 +3905,7 @@ class ScraperService {
       }
     }
 
-    if (host.contains('avature.net')) {
+    if (host.contains('avature.net') || host.contains('jobs.ea.com')) {
       try {
         final rows = <ScanResultRow>[];
         final seen = <String>{};
@@ -1673,6 +4674,618 @@ class ScraperService {
       }
     }
 
+    if (host.contains('cwan.com')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final apiUri = Uri.https(
+          'cwan.com',
+          '/wp-content/themes/wp-clearwater/blocks/workday/api.php',
+        );
+        final response = await _client
+            .get(
+              apiUri,
+              headers: {
+                'user-agent':
+                    userAgents[DateTime.now().millisecond % userAgents.length],
+                'accept': 'application/json, text/plain, */*',
+                'accept-language': 'en-US,en;q=0.9',
+                'referer': careerUri.toString(),
+              },
+            )
+            .timeout(const Duration(seconds: 20));
+
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+          return const [];
+        }
+
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map || decoded['Job_Posting'] is! List) {
+          return const [];
+        }
+
+        for (final item in (decoded['Job_Posting'] as List).whereType<Map>()) {
+          final map = item.map((k, v) => MapEntry(k.toString(), v));
+          final dataObj = map['Job_Posting_Data'];
+          if (dataObj is! Map) continue;
+          final data = dataObj.map((k, v) => MapEntry(k.toString(), v));
+
+          final title = (data['Job_Posting_Title'] ?? '').toString().trim();
+          if (title.isEmpty) continue;
+
+          final externalApply = (data['External_Apply_URL'] ?? '')
+              .toString()
+              .trim();
+          final externalPath = (data['External_Job_Path'] ?? '')
+              .toString()
+              .trim();
+          final applyLink = externalApply.isNotEmpty
+              ? externalApply
+              : (externalPath.isNotEmpty ? externalPath : careerUri.toString());
+
+          final familyRef = data['Job_Family_Reference'];
+          String department = '';
+          if (familyRef is Map && familyRef['ID'] is List) {
+            final ids = (familyRef['ID'] as List)
+                .map((e) => e.toString().trim())
+                .where((e) => e.isNotEmpty)
+                .toList();
+            if (ids.length > 1) {
+              department = ids[1];
+            } else if (ids.isNotEmpty) {
+              department = ids.first;
+            }
+          }
+
+          final locationRef = data['Job_Posting_Location_Data'];
+          String location = 'Not specified';
+          if (locationRef is Map) {
+            final primary = locationRef['Primary_Location_Reference'];
+            if (primary is Map && primary['ID'] is List) {
+              final ids = (primary['ID'] as List)
+                  .map((e) => e.toString().trim())
+                  .where((e) => e.isNotEmpty)
+                  .toList();
+              if (ids.length > 1) {
+                location = ids[1]
+                    .replaceFirst(RegExp(r'^LOC-', caseSensitive: false), '')
+                    .replaceAll(' Office', '')
+                    .trim();
+              }
+            }
+          }
+
+          final searchable = [
+            title,
+            department,
+            location,
+          ].where((e) => e.isNotEmpty).join(' | ').toLowerCase();
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch) {
+            continue;
+          }
+
+          final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: applyLink,
+              location: location,
+              duration: parseDuration(department).$1,
+              deadline: '—',
+              source: 'CWAN Workday Feed API',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('careers.dxc.com') &&
+        careerUri.path.toLowerCase().contains('/job-search-results')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        final requestedPage = int.tryParse(baseQuery['pg'] ?? '') ?? 1;
+        final startPage = keywords.isEmpty
+            ? (requestedPage < 1 ? 1 : requestedPage)
+            : 1;
+        final facets = <String>{'is_internal:DXCJobs'};
+
+        final countries =
+            careerUri.queryParametersAll['compliment[]'] ??
+            careerUri.queryParametersAll['compliment'] ??
+            const <String>[];
+        for (final country in countries) {
+          final c = country.trim();
+          if (c.isNotEmpty) {
+            facets.add('compliment:$c');
+          }
+        }
+        if (countries.isEmpty) {
+          final singleCountry =
+              (baseQuery['compliment[]'] ?? baseQuery['compliment'] ?? '')
+                  .trim();
+          if (singleCountry.isNotEmpty) {
+            facets.add('compliment:$singleCountry');
+          }
+        }
+
+        const limit = 10;
+        const orgId = '2492';
+        const maxPagesToScan = 220;
+
+        for (final term in matchTerms) {
+          var currentPage = startPage;
+          var pagesScanned = 0;
+          var consecutiveNoHitPages = 0;
+          int? total;
+
+          while (pagesScanned < maxPagesToScan) {
+            final offset = ((currentPage - 1) * limit) + 1;
+            final queryParams = <String, dynamic>{
+              'Organization': orgId,
+              'SearchText': term,
+              'Limit': '$limit',
+              'offset': '$offset',
+            };
+            for (final facet in facets) {
+              queryParams.putIfAbsent('facet', () => <String>[]);
+              (queryParams['facet'] as List<String>).add(facet);
+            }
+
+            final apiUri = Uri.https(
+              'jobsapi-internal.m-cloud.io',
+              '/api/job',
+              queryParams,
+            );
+
+            final response = await _client
+                .get(
+                  apiUri,
+                  headers: {
+                    'user-agent':
+                        userAgents[DateTime.now().millisecond %
+                            userAgents.length],
+                    'accept': 'application/json, text/plain, */*',
+                    'accept-language': 'en-US,en;q=0.9',
+                    'referer': careerUri.toString(),
+                  },
+                )
+                .timeout(const Duration(seconds: 20));
+
+            if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+              break;
+            }
+
+            final decoded = jsonDecode(response.body);
+            if (decoded is! Map) {
+              break;
+            }
+
+            total ??= int.tryParse('${decoded['totalHits'] ?? ''}');
+            final jobs = (decoded['queryResult'] is List)
+                ? (decoded['queryResult'] as List).whereType<Map>().toList()
+                : const <Map>[];
+            if (jobs.isEmpty) {
+              break;
+            }
+
+            final rowsBeforePage = rows.length;
+            for (final item in jobs) {
+              final map = item.map((k, v) => MapEntry(k.toString(), v));
+
+              final title = (map['title'] ?? '').toString().trim();
+              if (title.isEmpty) continue;
+
+              final description = (map['description'] ?? '').toString().trim();
+              final city = (map['primary_city'] ?? '').toString().trim();
+              final state = (map['primary_state'] ?? '').toString().trim();
+              final country = (map['primary_country'] ?? '').toString().trim();
+              final function = (map['function'] ?? '').toString().trim();
+              final industry = (map['industry'] ?? '').toString().trim();
+
+              final searchable = [
+                title,
+                description,
+                city,
+                state,
+                country,
+                function,
+                industry,
+              ].where((v) => v.trim().isNotEmpty).join(' | ').toLowerCase();
+
+              final exactWordMatch = matchTerms.any((kw) {
+                final pattern = RegExp(
+                  '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+                );
+                return pattern.hasMatch(searchable);
+              });
+              if (!exactWordMatch &&
+                  !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+                  !fuzzyMatch(searchable, matchTerms)) {
+                continue;
+              }
+
+              final seoUrl = (map['seo_url'] ?? '').toString().trim();
+              final applyLink = seoUrl.isNotEmpty
+                  ? seoUrl
+                  : careerUri.toString();
+              final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+              if (seen.contains(key)) continue;
+              seen.add(key);
+
+              final locationParts = [
+                city,
+                state,
+                country,
+              ].where((v) => v.isNotEmpty).toList();
+              final location = locationParts.isEmpty
+                  ? 'Not specified'
+                  : locationParts.join(', ');
+
+              rows.add(
+                ScanResultRow(
+                  company: companyName,
+                  title: title,
+                  companyUrl: careerUri.toString(),
+                  applyLink: applyLink,
+                  location: location,
+                  duration: parseDuration(description).$1,
+                  deadline: '—',
+                  source: 'DXC Careers API',
+                  error: '',
+                ),
+              );
+            }
+
+            if (rows.length == rowsBeforePage) {
+              consecutiveNoHitPages++;
+            } else {
+              consecutiveNoHitPages = 0;
+            }
+
+            pagesScanned += 1;
+            if (consecutiveNoHitPages >= 20) {
+              break;
+            }
+
+            if (total != null && total! > 0 && offset + jobs.length > total!) {
+              break;
+            }
+            if (jobs.length < limit) {
+              break;
+            }
+
+            currentPage += 1;
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('careers.coca-colacompany.com')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        final requestedStartPage = int.tryParse(baseQuery['pg'] ?? '') ?? 1;
+        final startPage = keywords.isEmpty
+            ? (requestedStartPage < 1 ? 1 : requestedStartPage)
+            : 1;
+
+        const limit = 20;
+        const maxPagesToScan = 160;
+
+        for (final term in matchTerms) {
+          var offset = ((startPage - 1) * limit) + 1;
+          var pagesScanned = 0;
+          var consecutiveNoHitPages = 0;
+          int? total;
+
+          while (pagesScanned < maxPagesToScan) {
+            final query =
+                'Organization=2110&Limit=$limit&offset=$offset&sortfield=open_date&sortorder=descending&'
+                'facet=ats_portalid%3ACocaCola-Workday-External&facet=is_internal%3Acoca-cola-careers&'
+                'SearchText=${Uri.encodeQueryComponent(term)}';
+            final apiUri = Uri.parse(
+              'https://jobsapi-internal.m-cloud.io/api/job?$query',
+            );
+
+            final response = await _client
+                .get(
+                  apiUri,
+                  headers: {
+                    'user-agent':
+                        userAgents[DateTime.now().millisecond %
+                            userAgents.length],
+                    'accept': 'application/json, text/plain, */*',
+                    'accept-language': 'en-US,en;q=0.9',
+                    'referer': careerUri.toString(),
+                  },
+                )
+                .timeout(const Duration(seconds: 20));
+
+            if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+              break;
+            }
+
+            final decoded = jsonDecode(response.body);
+            if (decoded is! Map) {
+              break;
+            }
+
+            total ??= int.tryParse('${decoded['totalHits'] ?? ''}');
+            final jobs = (decoded['queryResult'] is List)
+                ? (decoded['queryResult'] as List).whereType<Map>().toList()
+                : const <Map>[];
+            if (jobs.isEmpty) {
+              break;
+            }
+
+            final rowsBeforePage = rows.length;
+            for (final item in jobs) {
+              final map = item.map((k, v) => MapEntry(k.toString(), v));
+
+              final title = (map['title'] ?? map['job_title'] ?? '')
+                  .toString()
+                  .trim();
+              if (title.isEmpty) continue;
+
+              final description =
+                  (map['description'] ??
+                          map['description_short'] ??
+                          map['job_description'] ??
+                          '')
+                      .toString()
+                      .trim();
+              final city = (map['primary_city'] ?? '').toString().trim();
+              final state = (map['primary_state'] ?? '').toString().trim();
+              final country = (map['primary_country'] ?? '').toString().trim();
+              final location = [
+                city,
+                state,
+                country,
+              ].where((p) => p.isNotEmpty).join(', ');
+
+              final searchable = [
+                title,
+                description,
+                location,
+              ].where((p) => p.isNotEmpty).join(' | ').toLowerCase();
+
+              final exactWordMatch = matchTerms.any((kw) {
+                final pattern = RegExp(
+                  '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+                );
+                return pattern.hasMatch(searchable);
+              });
+              if (!exactWordMatch &&
+                  !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+                  !fuzzyMatch(description.toLowerCase(), matchTerms)) {
+                continue;
+              }
+
+              final seoUrl = (map['seo_url'] ?? '').toString().trim();
+              final rawUrl = (map['url'] ?? '').toString().trim();
+              final applyLink = seoUrl.isEmpty
+                  ? (rawUrl.isNotEmpty ? rawUrl : careerUri.toString())
+                  : (seoUrl.startsWith('http')
+                        ? seoUrl
+                        : 'https://careers.coca-colacompany.com/job/$seoUrl');
+
+              final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+              if (seen.contains(key)) continue;
+              seen.add(key);
+
+              rows.add(
+                ScanResultRow(
+                  company: companyName,
+                  title: title,
+                  companyUrl: careerUri.toString(),
+                  applyLink: applyLink,
+                  location: location.isEmpty ? 'Not specified' : location,
+                  duration: parseDuration('$title $description').$1,
+                  deadline: '—',
+                  source: 'Coca-Cola Careers API',
+                  error: '',
+                ),
+              );
+            }
+
+            if (rows.length == rowsBeforePage) {
+              consecutiveNoHitPages++;
+            } else {
+              consecutiveNoHitPages = 0;
+            }
+
+            pagesScanned += 1;
+            if (consecutiveNoHitPages >= 20) {
+              break;
+            }
+
+            if (total != null && total! > 0 && offset + jobs.length > total!) {
+              break;
+            }
+            if (jobs.length < limit) {
+              break;
+            }
+
+            offset += limit;
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+      if (host.contains('coinbase.com') &&
+          careerUri.path.toLowerCase().contains('/careers/positions')) {
+        try {
+          final rows = <ScanResultRow>[];
+          final seen = <String>{};
+          final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+          final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+          final requestedCountry = (baseQuery['country'] ?? '')
+              .trim()
+              .toLowerCase();
+          const countryNameByCode = <String, String>{
+            'in': 'india',
+            'us': 'usa',
+            'gb': 'uk',
+            'uk': 'uk',
+            'sg': 'singapore',
+            'ca': 'canada',
+            'ae': 'united arab emirates',
+            'au': 'australia',
+            'br': 'brazil',
+            'cy': 'cyprus',
+            'ie': 'ireland',
+            'lu': 'luxembourg',
+          };
+          final requestedCountryName =
+              countryNameByCode[requestedCountry] ?? requestedCountry;
+
+          final apiUri = Uri.https(
+            'boards-api.greenhouse.io',
+            '/v1/boards/coinbase/jobs',
+            {'content': 'true'},
+          );
+
+          final response = await _client
+              .get(
+                apiUri,
+                headers: {
+                  'user-agent':
+                      userAgents[DateTime.now().millisecond %
+                          userAgents.length],
+                  'accept': 'application/json, text/plain, */*',
+                  'accept-language': 'en-US,en;q=0.9',
+                  'referer': careerUri.toString(),
+                },
+              )
+              .timeout(const Duration(seconds: 20));
+
+          if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+            return const [];
+          }
+
+          final decoded = jsonDecode(response.body);
+          if (decoded is! Map || decoded['jobs'] is! List) {
+            return const [];
+          }
+
+          bool matchesRequestedCountry(String locationLower) {
+            if (requestedCountry.isEmpty) return true;
+            if (locationLower.contains(requestedCountryName)) return true;
+            if (requestedCountry.length == 2) {
+              final pattern = RegExp(
+                '\\b${RegExp.escape(requestedCountry)}\\b',
+              );
+              return pattern.hasMatch(locationLower);
+            }
+            return false;
+          }
+
+          for (final item in (decoded['jobs'] as List).whereType<Map>()) {
+            final map = item.map((k, v) => MapEntry(k.toString(), v));
+
+            final title = (map['title'] ?? '').toString().trim();
+            if (title.isEmpty) continue;
+
+            final locationObj = map['location'];
+            final location = locationObj is Map
+                ? (locationObj['name'] ?? '').toString().trim()
+                : '';
+            final locationLower = location.toLowerCase();
+            if (!matchesRequestedCountry(locationLower)) {
+              continue;
+            }
+
+            final rawContent = (map['content'] ?? '').toString();
+            final normalizedHtml = rawContent
+                .replaceAll('&lt;', '<')
+                .replaceAll('&gt;', '>')
+                .replaceAll('&amp;', '&');
+            final contentText =
+                html_parser.parse(normalizedHtml).documentElement?.text ??
+                rawContent;
+
+            final searchable = [
+              title,
+              location,
+              contentText,
+            ].where((p) => p.trim().isNotEmpty).join(' | ').toLowerCase();
+
+            final exactWordMatch = matchTerms.any((kw) {
+              final pattern = RegExp(
+                '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+              );
+              return pattern.hasMatch(searchable);
+            });
+            if (!exactWordMatch &&
+                !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+                !fuzzyMatch(contentText.toLowerCase(), matchTerms)) {
+              continue;
+            }
+
+            final applyLink = (map['absolute_url'] ?? map['url'] ?? '')
+                .toString()
+                .trim();
+            final resolvedApplyLink = applyLink.isNotEmpty
+                ? applyLink
+                : careerUri.toString();
+
+            final key =
+                '${title.toLowerCase()}|${resolvedApplyLink.toLowerCase()}';
+            if (seen.contains(key)) continue;
+            seen.add(key);
+
+            rows.add(
+              ScanResultRow(
+                company: companyName,
+                title: title,
+                companyUrl: careerUri.toString(),
+                applyLink: resolvedApplyLink,
+                location: location.isEmpty ? 'Not specified' : location,
+                duration: parseDuration('$title $contentText').$1,
+                deadline: '—',
+                source: 'Coinbase Greenhouse API',
+                error: '',
+              ),
+            );
+          }
+
+          return rows;
+        } catch (_) {
+          return const [];
+        }
+      }
+    }
+
     if (host.contains('darwinbox.in')) {
       try {
         final rows = <ScanResultRow>[];
@@ -2071,6 +5684,1299 @@ class ScraperService {
                 error: '',
               ),
             );
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('jobs.thecignagroup.com')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+        final searchPath =
+            careerUri.path.toLowerCase().contains('/search-results')
+            ? careerUri.path
+            : '/us/en/search-results';
+
+        String decodePhenomText(String value) {
+          return value
+              .replaceAllMapped(RegExp(r'\\u([0-9a-fA-F]{4})'), (m) {
+                final code = int.tryParse(m.group(1) ?? '', radix: 16);
+                return code == null ? '' : String.fromCharCode(code);
+              })
+              .replaceAll(r'\/', '/')
+              .replaceAll('&amp;', '&')
+              .replaceAll(r'\"', '"')
+              .replaceAll(r'\n', ' ')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+        }
+
+        final pageSize = 10;
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        final startOffset = int.tryParse(baseQuery['from'] ?? '') ?? 0;
+
+        var maxOffset = startOffset + 90;
+        for (
+          var offset = startOffset;
+          offset <= maxOffset && offset <= (startOffset + 200);
+          offset += pageSize
+        ) {
+          final query = Map<String, String>.from(baseQuery)
+            ..remove('from')
+            ..remove('s')
+            ..['from'] = '$offset'
+            ..['s'] = '1';
+
+          final pageUri = Uri.https(
+            careerUri.host,
+            searchPath,
+            query.isEmpty ? null : query,
+          );
+
+          final resp = await _client
+              .get(
+                pageUri,
+                headers: {
+                  'User-Agent':
+                      userAgents[DateTime.now().millisecond %
+                          userAgents.length],
+                  'Accept-Language': 'en-US,en;q=0.9',
+                  'Accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'DNT': '1',
+                },
+              )
+              .timeout(const Duration(seconds: 12));
+
+          if (resp.statusCode >= 400 || resp.body.trim().isEmpty) {
+            continue;
+          }
+
+          if (offset == startOffset) {
+            final totalResultsMatch = RegExp(
+              r'(\d+)\s*results',
+              caseSensitive: false,
+            ).firstMatch(resp.body);
+            final totalResults = int.tryParse(
+              totalResultsMatch?.group(1) ?? '',
+            );
+            if (totalResults != null && totalResults > 0) {
+              maxOffset = ((totalResults - 1) ~/ pageSize) * pageSize;
+            }
+          }
+
+          final applyMatches = RegExp(
+            r'"applyUrl":"(https?:[^"\\]+)"',
+            caseSensitive: false,
+            dotAll: true,
+          ).allMatches(resp.body);
+
+          if (applyMatches.isEmpty) {
+            continue;
+          }
+
+          for (final match in applyMatches) {
+            final applyLinkRaw = decodePhenomText(match.group(1)?.trim() ?? '');
+            if (applyLinkRaw.isEmpty) continue;
+
+            final applyLink = applyLinkRaw.startsWith('http')
+                ? applyLinkRaw
+                : pageUri.resolve(applyLinkRaw).toString();
+
+            String titleFromApplyLink(String url) {
+              final uri = Uri.tryParse(url);
+              if (uri == null || uri.pathSegments.isEmpty) return '';
+              final applyIndex = uri.pathSegments.lastIndexOf('apply');
+              if (applyIndex <= 0) return '';
+              var slug = uri.pathSegments[applyIndex - 1];
+              slug = slug.replaceFirst(RegExp(r'_[0-9]+$'), '');
+              slug = slug
+                  .replaceAll('---', ' - ')
+                  .replaceAll('-', ' ')
+                  .replaceAll(RegExp(r'\s+'), ' ')
+                  .trim();
+              return slug;
+            }
+
+            final index = match.start;
+            final beforeStart = (index - 2600) < 0 ? 0 : index - 2600;
+            final before = resp.body.substring(beforeStart, index);
+
+            final titleMatches = RegExp(
+              r'"title":"([^"\\]*(?:\\.[^"\\]*)*)"',
+              caseSensitive: false,
+              dotAll: true,
+            ).allMatches(before);
+            if (titleMatches.isEmpty) continue;
+
+            final title = decodePhenomText(
+              titleMatches.last.group(1)?.trim() ?? '',
+            );
+            final derivedTitle = titleFromApplyLink(applyLink);
+            final chosenTitle = derivedTitle.isNotEmpty ? derivedTitle : title;
+            if (chosenTitle.isEmpty) continue;
+
+            final windowStart = (index - 600) < 0 ? 0 : index - 600;
+            final windowEnd = (index + 3000) > resp.body.length
+                ? resp.body.length
+                : index + 3000;
+            final window = resp.body.substring(windowStart, windowEnd);
+
+            final description = decodePhenomText(
+              RegExp(
+                    r'"descriptionTeaser":"([^"\\]*(?:\\.[^"\\]*)*)"',
+                  ).firstMatch(window)?.group(1) ??
+                  '',
+            );
+            final location = decodePhenomText(
+              RegExp(
+                    r'"location":"([^"\\]*(?:\\.[^"\\]*)*)"',
+                  ).firstMatch(window)?.group(1) ??
+                  '',
+            );
+
+            final titleLower = chosenTitle.toLowerCase();
+            final descLower = description.toLowerCase();
+            final locLower = location.toLowerCase();
+            final exactWordMatch = matchTerms.any((kw) {
+              final pattern = RegExp(
+                '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+              );
+              return pattern.hasMatch(titleLower) ||
+                  pattern.hasMatch(descLower) ||
+                  pattern.hasMatch(locLower);
+            });
+            if (!exactWordMatch &&
+                !fuzzyMatch(titleLower, matchTerms) &&
+                !fuzzyMatch(descLower, matchTerms)) {
+              continue;
+            }
+
+            final key =
+                '${chosenTitle.toLowerCase()}|${applyLink.toLowerCase()}';
+            if (seen.contains(key)) continue;
+            seen.add(key);
+
+            final durationData = parseDuration(description);
+            rows.add(
+              ScanResultRow(
+                company: companyName,
+                title: chosenTitle,
+                companyUrl: careerUri.toString(),
+                applyLink: applyLink,
+                location: location.isEmpty ? 'Not specified' : location,
+                duration: durationData.$1,
+                deadline: '—',
+                source: 'Cigna Phenom Search HTML',
+                error: '',
+              ),
+            );
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('careers.circle.com')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+        final searchPath =
+            careerUri.path.toLowerCase().contains('/search-results')
+            ? careerUri.path
+            : '/us/en/search-results';
+
+        String decodePhenomText(String value) {
+          return value
+              .replaceAllMapped(RegExp(r'\\u([0-9a-fA-F]{4})'), (m) {
+                final code = int.tryParse(m.group(1) ?? '', radix: 16);
+                return code == null ? '' : String.fromCharCode(code);
+              })
+              .replaceAll(r'\/', '/')
+              .replaceAll('&amp;', '&')
+              .replaceAll(r'\"', '"')
+              .replaceAll(r'\n', ' ')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+        }
+
+        final pageSize = 10;
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        final startOffset = int.tryParse(baseQuery['from'] ?? '') ?? 0;
+
+        var maxOffset = startOffset + 90;
+        for (
+          var offset = startOffset;
+          offset <= maxOffset && offset <= (startOffset + 300);
+          offset += pageSize
+        ) {
+          final query = Map<String, String>.from(baseQuery)
+            ..remove('from')
+            ..remove('s')
+            ..['from'] = '$offset'
+            ..['s'] = '1';
+
+          final pageUri = Uri.https(
+            careerUri.host,
+            searchPath,
+            query.isEmpty ? null : query,
+          );
+
+          final resp = await _client
+              .get(
+                pageUri,
+                headers: {
+                  'User-Agent':
+                      userAgents[DateTime.now().millisecond %
+                          userAgents.length],
+                  'Accept-Language': 'en-US,en;q=0.9',
+                  'Accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'DNT': '1',
+                },
+              )
+              .timeout(const Duration(seconds: 12));
+
+          if (resp.statusCode >= 400 || resp.body.trim().isEmpty) {
+            continue;
+          }
+
+          if (offset == startOffset) {
+            final totalResultsMatch = RegExp(
+              r'(\d+)\s*results',
+              caseSensitive: false,
+            ).firstMatch(resp.body);
+            final totalResults = int.tryParse(
+              totalResultsMatch?.group(1) ?? '',
+            );
+            if (totalResults != null && totalResults > 0) {
+              maxOffset = ((totalResults - 1) ~/ pageSize) * pageSize;
+            }
+          }
+
+          final applyMatches = RegExp(
+            r'"applyUrl":"(https?:[^"\\]+)"',
+            caseSensitive: false,
+            dotAll: true,
+          ).allMatches(resp.body);
+
+          if (applyMatches.isEmpty) {
+            continue;
+          }
+
+          for (final match in applyMatches) {
+            final applyLinkRaw = decodePhenomText(match.group(1)?.trim() ?? '');
+            if (applyLinkRaw.isEmpty) continue;
+
+            final applyLink = applyLinkRaw.startsWith('http')
+                ? applyLinkRaw
+                : pageUri.resolve(applyLinkRaw).toString();
+
+            String titleFromApplyLink(String url) {
+              final uri = Uri.tryParse(url);
+              if (uri == null || uri.pathSegments.isEmpty) return '';
+              final applyIndex = uri.pathSegments.lastIndexOf('apply');
+              if (applyIndex <= 0) return '';
+              var slug = uri.pathSegments[applyIndex - 1];
+              slug = slug.replaceFirst(RegExp(r'_[0-9]+$'), '');
+              slug = slug
+                  .replaceAll('---', ' - ')
+                  .replaceAll('-', ' ')
+                  .replaceAll(RegExp(r'\s+'), ' ')
+                  .trim();
+              return slug;
+            }
+
+            final index = match.start;
+            final beforeStart = (index - 2600) < 0 ? 0 : index - 2600;
+            final before = resp.body.substring(beforeStart, index);
+
+            final titleMatches = RegExp(
+              r'"title":"([^"\\]*(?:\\.[^"\\]*)*)"',
+              caseSensitive: false,
+              dotAll: true,
+            ).allMatches(before);
+            if (titleMatches.isEmpty) continue;
+
+            final title = decodePhenomText(
+              titleMatches.last.group(1)?.trim() ?? '',
+            );
+            final derivedTitle = titleFromApplyLink(applyLink);
+            final chosenTitle = derivedTitle.isNotEmpty ? derivedTitle : title;
+            if (chosenTitle.isEmpty) continue;
+
+            final windowStart = (index - 600) < 0 ? 0 : index - 600;
+            final windowEnd = (index + 3000) > resp.body.length
+                ? resp.body.length
+                : index + 3000;
+            final window = resp.body.substring(windowStart, windowEnd);
+
+            final description = decodePhenomText(
+              RegExp(
+                    r'"descriptionTeaser":"([^"\\]*(?:\\.[^"\\]*)*)"',
+                  ).firstMatch(window)?.group(1) ??
+                  '',
+            );
+            final location = decodePhenomText(
+              RegExp(
+                    r'"location":"([^"\\]*(?:\\.[^"\\]*)*)"',
+                  ).firstMatch(window)?.group(1) ??
+                  '',
+            );
+
+            final titleLower = chosenTitle.toLowerCase();
+            final descLower = description.toLowerCase();
+            final locLower = location.toLowerCase();
+            final exactWordMatch = matchTerms.any((kw) {
+              final pattern = RegExp(
+                '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+              );
+              return pattern.hasMatch(titleLower) ||
+                  pattern.hasMatch(descLower) ||
+                  pattern.hasMatch(locLower);
+            });
+            if (!exactWordMatch &&
+                !fuzzyMatch(titleLower, matchTerms) &&
+                !fuzzyMatch(descLower, matchTerms)) {
+              continue;
+            }
+
+            final key =
+                '${chosenTitle.toLowerCase()}|${applyLink.toLowerCase()}';
+            if (seen.contains(key)) continue;
+            seen.add(key);
+
+            final durationData = parseDuration(description);
+            rows.add(
+              ScanResultRow(
+                company: companyName,
+                title: chosenTitle,
+                companyUrl: careerUri.toString(),
+                applyLink: applyLink,
+                location: location.isEmpty ? 'Not specified' : location,
+                duration: durationData.$1,
+                deadline: '—',
+                source: 'Circle Phenom Search HTML',
+                error: '',
+              ),
+            );
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('careers.cisco.com')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+        final searchPath =
+            careerUri.path.toLowerCase().contains('/search-results')
+            ? careerUri.path
+            : '/global/en/search-results';
+
+        String decodePhenomText(String value) {
+          return value
+              .replaceAllMapped(RegExp(r'\\u([0-9a-fA-F]{4})'), (m) {
+                final code = int.tryParse(m.group(1) ?? '', radix: 16);
+                return code == null ? '' : String.fromCharCode(code);
+              })
+              .replaceAll(r'\/', '/')
+              .replaceAll('&amp;', '&')
+              .replaceAll(r'\"', '"')
+              .replaceAll(r'\n', ' ')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+        }
+
+        final pageSize = 10;
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        final startOffset = int.tryParse(baseQuery['from'] ?? '') ?? 0;
+
+        // Cisco currently exposes deep pagination; keep a deterministic fallback.
+        var maxOffset = startOffset + 840;
+        for (
+          var offset = startOffset;
+          offset <= maxOffset && offset <= (startOffset + 1000);
+          offset += pageSize
+        ) {
+          final query = Map<String, String>.from(baseQuery)
+            ..remove('from')
+            ..remove('s')
+            ..['from'] = '$offset'
+            ..['s'] = '1';
+
+          final pageUri = Uri.https(
+            careerUri.host,
+            searchPath,
+            query.isEmpty ? null : query,
+          );
+
+          final resp = await _client
+              .get(
+                pageUri,
+                headers: {
+                  'User-Agent':
+                      userAgents[DateTime.now().millisecond %
+                          userAgents.length],
+                  'Accept-Language': 'en-US,en;q=0.9',
+                  'Accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'DNT': '1',
+                },
+              )
+              .timeout(const Duration(seconds: 12));
+
+          if (resp.statusCode >= 400 || resp.body.trim().isEmpty) {
+            continue;
+          }
+
+          if (offset == startOffset) {
+            final totalResultsMatch = RegExp(
+              r'(\d+)\s*results',
+              caseSensitive: false,
+            ).firstMatch(resp.body);
+            final totalResults = int.tryParse(
+              totalResultsMatch?.group(1) ?? '',
+            );
+            if (totalResults != null && totalResults > 0) {
+              maxOffset = ((totalResults - 1) ~/ pageSize) * pageSize;
+            }
+          }
+
+          final applyMatches = RegExp(
+            r'"applyUrl":"(https?:[^"\\]+)"',
+            caseSensitive: false,
+            dotAll: true,
+          ).allMatches(resp.body);
+
+          if (applyMatches.isEmpty) {
+            continue;
+          }
+
+          for (final match in applyMatches) {
+            final applyLinkRaw = decodePhenomText(match.group(1)?.trim() ?? '');
+            if (applyLinkRaw.isEmpty) continue;
+
+            final applyLink = applyLinkRaw.startsWith('http')
+                ? applyLinkRaw
+                : pageUri.resolve(applyLinkRaw).toString();
+
+            String titleFromApplyLink(String url) {
+              final uri = Uri.tryParse(url);
+              if (uri == null || uri.pathSegments.isEmpty) return '';
+              final applyIndex = uri.pathSegments.lastIndexOf('apply');
+              if (applyIndex <= 0) return '';
+              var slug = uri.pathSegments[applyIndex - 1];
+              slug = slug.replaceFirst(RegExp(r'_[0-9]+$'), '');
+              slug = slug
+                  .replaceAll('---', ' - ')
+                  .replaceAll('-', ' ')
+                  .replaceAll(RegExp(r'\s+'), ' ')
+                  .trim();
+              return slug;
+            }
+
+            final index = match.start;
+            final beforeStart = (index - 2600) < 0 ? 0 : index - 2600;
+            final before = resp.body.substring(beforeStart, index);
+
+            final titleMatches = RegExp(
+              r'"title":"([^"\\]*(?:\\.[^"\\]*)*)"',
+              caseSensitive: false,
+              dotAll: true,
+            ).allMatches(before);
+            if (titleMatches.isEmpty) continue;
+
+            final title = decodePhenomText(
+              titleMatches.last.group(1)?.trim() ?? '',
+            );
+            final derivedTitle = titleFromApplyLink(applyLink);
+            final chosenTitle = derivedTitle.isNotEmpty ? derivedTitle : title;
+            if (chosenTitle.isEmpty) continue;
+
+            final windowStart = (index - 600) < 0 ? 0 : index - 600;
+            final windowEnd = (index + 3000) > resp.body.length
+                ? resp.body.length
+                : index + 3000;
+            final window = resp.body.substring(windowStart, windowEnd);
+
+            final description = decodePhenomText(
+              RegExp(
+                    r'"descriptionTeaser":"([^"\\]*(?:\\.[^"\\]*)*)"',
+                  ).firstMatch(window)?.group(1) ??
+                  '',
+            );
+            final location = decodePhenomText(
+              RegExp(
+                    r'"location":"([^"\\]*(?:\\.[^"\\]*)*)"',
+                  ).firstMatch(window)?.group(1) ??
+                  '',
+            );
+
+            final titleLower = chosenTitle.toLowerCase();
+            final descLower = description.toLowerCase();
+            final locLower = location.toLowerCase();
+            final exactWordMatch = matchTerms.any((kw) {
+              final pattern = RegExp(
+                '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+              );
+              return pattern.hasMatch(titleLower) ||
+                  pattern.hasMatch(descLower) ||
+                  pattern.hasMatch(locLower);
+            });
+            if (!exactWordMatch &&
+                !fuzzyMatch(titleLower, matchTerms) &&
+                !fuzzyMatch(descLower, matchTerms)) {
+              continue;
+            }
+
+            final key =
+                '${chosenTitle.toLowerCase()}|${applyLink.toLowerCase()}';
+            if (seen.contains(key)) continue;
+            seen.add(key);
+
+            final durationData = parseDuration(description);
+            rows.add(
+              ScanResultRow(
+                company: companyName,
+                title: chosenTitle,
+                companyUrl: careerUri.toString(),
+                applyLink: applyLink,
+                location: location.isEmpty ? 'Not specified' : location,
+                duration: durationData.$1,
+                deadline: '—',
+                source: 'Cisco Phenom Search HTML',
+                error: '',
+              ),
+            );
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('jobs.citi.com')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+        final searchPath = careerUri.path.toLowerCase().contains('/search-jobs')
+            ? careerUri.path
+            : '/search-jobs';
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        final requestedStartPage = int.tryParse(baseQuery['p'] ?? '') ?? 1;
+        final startPage = requestedStartPage < 1 ? 1 : requestedStartPage;
+
+        for (final term in matchTerms) {
+          final termQuery = Map<String, String>.from(baseQuery);
+          if ((termQuery['k'] ?? '').trim().isEmpty) {
+            termQuery['k'] = term;
+          }
+
+          final firstQuery = Map<String, String>.from(termQuery)
+            ..['p'] = '$startPage';
+          final firstPageUri = Uri.https(
+            careerUri.host,
+            searchPath,
+            firstQuery.isEmpty ? null : firstQuery,
+          );
+
+          final firstResp = await _client
+              .get(
+                firstPageUri,
+                headers: {
+                  'User-Agent':
+                      userAgents[DateTime.now().millisecond %
+                          userAgents.length],
+                  'Accept-Language': 'en-US,en;q=0.9',
+                  'Accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'DNT': '1',
+                },
+              )
+              .timeout(const Duration(seconds: 12));
+
+          if (firstResp.statusCode >= 400 || firstResp.body.trim().isEmpty) {
+            continue;
+          }
+
+          final maxFromInput = int.tryParse(
+            RegExp(
+                  r'<input[^>]*class="[^"]*pagination-current[^"]*"[^>]*max="(\d+)"',
+                  caseSensitive: false,
+                ).firstMatch(firstResp.body)?.group(1) ??
+                '',
+          );
+          final maxFromText = int.tryParse(
+            RegExp(
+                  r'pagination-total-pages">\s*/\s*(\d+)',
+                  caseSensitive: false,
+                ).firstMatch(firstResp.body)?.group(1) ??
+                '',
+          );
+          final discoveredMaxPage = (maxFromInput ?? maxFromText ?? startPage);
+          final cappedMaxPage = discoveredMaxPage > 300
+              ? 300
+              : discoveredMaxPage;
+          var consecutiveNoHitPages = 0;
+
+          for (var page = startPage; page <= cappedMaxPage; page++) {
+            final rowsBeforePage = rows.length;
+            final pageQuery = Map<String, String>.from(termQuery)
+              ..['p'] = '$page';
+            final pageUri = Uri.https(
+              careerUri.host,
+              searchPath,
+              pageQuery.isEmpty ? null : pageQuery,
+            );
+
+            final resp = page == startPage
+                ? firstResp
+                : await _client
+                      .get(
+                        pageUri,
+                        headers: {
+                          'User-Agent':
+                              userAgents[DateTime.now().millisecond %
+                                  userAgents.length],
+                          'Accept-Language': 'en-US,en;q=0.9',
+                          'Accept':
+                              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                          'DNT': '1',
+                        },
+                      )
+                      .timeout(const Duration(seconds: 12));
+
+            if (resp.statusCode >= 400 || resp.body.trim().isEmpty) {
+              continue;
+            }
+
+            final doc = html_parser.parse(resp.body);
+            final jobItems = doc.querySelectorAll('li.sr-job-item');
+            if (jobItems.isEmpty && page > startPage) {
+              break;
+            }
+
+            for (final item in jobItems) {
+              final anchor =
+                  item.querySelector('h3.sr-job-item__title a[href]') ??
+                  item.querySelector('a.sr-job-item__link[href]') ??
+                  item.querySelector('a[href*="/job/"]');
+              final href = (anchor?.attributes['href'] ?? '').trim();
+              if (href.isEmpty) continue;
+
+              final title = normalize(anchor?.text ?? '');
+              if (title.isEmpty) continue;
+
+              final applyLink = pageUri.resolve(href).toString();
+              final location = normalize(
+                item.querySelector('.sr-job-location')?.text ?? '',
+              );
+              final cardText = normalize(item.text);
+
+              final titleLower = title.toLowerCase();
+              final textLower = cardText.toLowerCase();
+              final locLower = location.toLowerCase();
+              final exactWordMatch = matchTerms.any((kw) {
+                final pattern = RegExp(
+                  '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+                );
+                return pattern.hasMatch(titleLower) ||
+                    pattern.hasMatch(textLower) ||
+                    pattern.hasMatch(locLower);
+              });
+              if (!exactWordMatch && !fuzzyMatch(titleLower, matchTerms)) {
+                continue;
+              }
+
+              final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+              if (seen.contains(key)) continue;
+              seen.add(key);
+
+              final durationData = parseDuration(cardText);
+              rows.add(
+                ScanResultRow(
+                  company: companyName,
+                  title: title,
+                  companyUrl: careerUri.toString(),
+                  applyLink: applyLink,
+                  location: location.isEmpty ? 'Not specified' : location,
+                  duration: durationData.$1,
+                  deadline: '—',
+                  source: 'Citi TalentBrew Search HTML',
+                  error: '',
+                ),
+              );
+            }
+
+            if (rows.length == rowsBeforePage) {
+              consecutiveNoHitPages++;
+            } else {
+              consecutiveNoHitPages = 0;
+            }
+
+            if (consecutiveNoHitPages >= 20) {
+              break;
+            }
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('jobs.disneycareers.com')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+        final queryTerms = keywords.isEmpty ? const ['intern'] : keywords;
+
+        final latitude =
+            (careerUri.queryParameters['glat'] ??
+                    careerUri.queryParameters['Latitude'] ??
+                    '')
+                .trim();
+        final longitude =
+            (careerUri.queryParameters['glon'] ??
+                    careerUri.queryParameters['Longitude'] ??
+                    '')
+                .trim();
+        final distance =
+            (careerUri.queryParameters['Distance'] ??
+                    careerUri.queryParameters['distance'] ??
+                    '50')
+                .trim();
+
+        for (final query in queryTerms) {
+          var totalPages = 1;
+          var recordsPerPage = 15;
+
+          for (var page = 1; page <= totalPages && page <= 250; page++) {
+            final uri =
+                Uri.https('jobs.disneycareers.com', '/search-jobs/results', {
+                  'Keywords': query,
+                  'Location': '',
+                  'Distance': distance.isEmpty ? '50' : distance,
+                  'Latitude': latitude,
+                  'Longitude': longitude,
+                  'ShowRadius': 'False',
+                  'CurrentPage': '$page',
+                  'RecordsPerPage': '$recordsPerPage',
+                  'ActiveFacetID': '0',
+                  'CustomFacetName': '',
+                  'FacetTerm': '',
+                  'FacetType': '0',
+                  'SearchResultsModuleName': 'Search Results',
+                  'SortCriteria': '0',
+                  'SortDirection': '0',
+                  'SearchType': '5',
+                  'KeywordType': '',
+                  'LocationType': '',
+                  'LocationPath': '',
+                  'OrganizationIds': '',
+                  'PostalCode': '',
+                  'ResultsType': '0',
+                  'TotalContentResults': '0',
+                  'IsPagination': 'False',
+                });
+
+            final response = await _client
+                .get(
+                  uri,
+                  headers: const {
+                    'accept': 'application/json, text/javascript, */*; q=0.01',
+                    'x-requested-with': 'XMLHttpRequest',
+                    'referer': 'https://jobs.disneycareers.com/search-jobs',
+                  },
+                )
+                .timeout(const Duration(seconds: 15));
+
+            if (response.statusCode >= 400 || response.body.trim().isEmpty) {
+              continue;
+            }
+
+            final decoded = jsonDecode(response.body);
+            if (decoded is! Map) {
+              continue;
+            }
+
+            final resultsHtml = (decoded['results'] ?? '').toString();
+            if (resultsHtml.trim().isEmpty) {
+              continue;
+            }
+
+            final doc = html_parser.parse(resultsHtml);
+            final section = doc.querySelector('section#search-results');
+            final totalPagesAttr = section?.attributes['data-total-pages']
+                ?.trim();
+            final parsedTotalPages = int.tryParse(totalPagesAttr ?? '');
+            if (parsedTotalPages != null && parsedTotalPages > 0) {
+              totalPages = parsedTotalPages;
+            }
+
+            final recordsPerPageAttr = section
+                ?.attributes['data-records-per-page']
+                ?.trim();
+            final parsedRecordsPerPage = int.tryParse(recordsPerPageAttr ?? '');
+            if (parsedRecordsPerPage != null && parsedRecordsPerPage > 0) {
+              recordsPerPage = parsedRecordsPerPage;
+            }
+
+            final entries = _extractTalentBrewEntries(doc, baseUri: careerUri);
+            if (entries.isEmpty) {
+              continue;
+            }
+
+            for (final entry in entries) {
+              final title = (entry['title'] ?? '').trim();
+              if (title.isEmpty) continue;
+
+              final description = (entry['description'] ?? '').trim();
+              final titleLower = title.toLowerCase();
+              final descLower = description.toLowerCase();
+              final exactWordMatch = matchTerms.any((kw) {
+                final pattern = RegExp(
+                  '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+                );
+                return pattern.hasMatch(titleLower) ||
+                    pattern.hasMatch(descLower);
+              });
+              if (!exactWordMatch && !fuzzyMatch(titleLower, matchTerms)) {
+                continue;
+              }
+
+              final applyLink = (entry['applyLink'] ?? careerUri.toString())
+                  .trim();
+              final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+              if (seen.contains(key)) continue;
+              seen.add(key);
+
+              final location = (entry['location'] ?? '').trim();
+              final durationData = parseDuration(description);
+
+              rows.add(
+                ScanResultRow(
+                  company: companyName,
+                  title: title,
+                  companyUrl: careerUri.toString(),
+                  applyLink: applyLink,
+                  location: location.isEmpty ? 'Not specified' : location,
+                  duration: durationData.$1,
+                  deadline: '—',
+                  source: 'Disney TalentBrew Results API',
+                  error: '',
+                ),
+              );
+            }
+          }
+
+          if (rows.length >= 500) {
+            break;
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('jobs.comcast.com')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+        final searchPath = careerUri.path.toLowerCase().contains('/search-jobs')
+            ? careerUri.path
+            : '/search-jobs';
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        final requestedStartPage = int.tryParse(baseQuery['p'] ?? '') ?? 1;
+        final startPage = requestedStartPage < 1 ? 1 : requestedStartPage;
+
+        for (final term in matchTerms) {
+          final termQuery = Map<String, String>.from(baseQuery);
+          if ((termQuery['k'] ?? '').trim().isEmpty) {
+            termQuery['k'] = term;
+          }
+
+          final firstQuery = Map<String, String>.from(termQuery)
+            ..['p'] = '$startPage';
+          final firstPageUri = Uri.https(
+            careerUri.host,
+            searchPath,
+            firstQuery.isEmpty ? null : firstQuery,
+          );
+
+          final firstResp = await _client
+              .get(
+                firstPageUri,
+                headers: {
+                  'User-Agent':
+                      userAgents[DateTime.now().millisecond %
+                          userAgents.length],
+                  'Accept-Language': 'en-US,en;q=0.9',
+                  'Accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'DNT': '1',
+                },
+              )
+              .timeout(const Duration(seconds: 12));
+
+          if (firstResp.statusCode >= 400 || firstResp.body.trim().isEmpty) {
+            continue;
+          }
+
+          final pageSize = int.tryParse(
+            RegExp(
+                  r'(\d+)\s+of\s+\d+\s+results\s+are\s+now\s+available',
+                  caseSensitive: false,
+                ).firstMatch(firstResp.body)?.group(1) ??
+                '',
+          );
+          final totalResults = int.tryParse(
+            RegExp(
+                  r'([0-9,]+)\s+Results\s+Found',
+                  caseSensitive: false,
+                ).firstMatch(firstResp.body)?.group(1)?.replaceAll(',', '') ??
+                '',
+          );
+
+          var discoveredMaxPage = startPage;
+          if (pageSize != null && pageSize > 0 && totalResults != null) {
+            discoveredMaxPage = ((totalResults - 1) ~/ pageSize) + 1;
+          }
+          final cappedMaxPage = discoveredMaxPage > 300
+              ? 300
+              : discoveredMaxPage;
+          var consecutiveNoHitPages = 0;
+
+          for (var page = startPage; page <= cappedMaxPage; page++) {
+            final rowsBeforePage = rows.length;
+            final pageQuery = Map<String, String>.from(termQuery)
+              ..['p'] = '$page';
+            final pageUri = Uri.https(
+              careerUri.host,
+              searchPath,
+              pageQuery.isEmpty ? null : pageQuery,
+            );
+
+            final resp = page == startPage
+                ? firstResp
+                : await _client
+                      .get(
+                        pageUri,
+                        headers: {
+                          'User-Agent':
+                              userAgents[DateTime.now().millisecond %
+                                  userAgents.length],
+                          'Accept-Language': 'en-US,en;q=0.9',
+                          'Accept':
+                              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                          'DNT': '1',
+                        },
+                      )
+                      .timeout(const Duration(seconds: 12));
+
+            if (resp.statusCode >= 400 || resp.body.trim().isEmpty) {
+              continue;
+            }
+
+            final doc = html_parser.parse(resp.body);
+            final anchors = doc.querySelectorAll('a[href*="/job/"]');
+            if (anchors.isEmpty && page > startPage) {
+              break;
+            }
+
+            for (final anchor in anchors) {
+              final href = (anchor.attributes['href'] ?? '').trim();
+              if (href.isEmpty) continue;
+
+              final resolved = pageUri.resolve(href);
+              final segments = resolved.pathSegments
+                  .map((s) => s.trim())
+                  .where((s) => s.isNotEmpty)
+                  .toList();
+              if (segments.length < 4 ||
+                  segments.first.toLowerCase() != 'job') {
+                continue;
+              }
+
+              final title = normalize(anchor.text);
+              if (title.isEmpty) continue;
+
+              final container =
+                  anchor.parent?.parent?.parent?.parent ??
+                  anchor.parent?.parent ??
+                  anchor.parent;
+              final cardText = normalize(container?.text ?? '');
+
+              final titleLower = title.toLowerCase();
+              final textLower = cardText.toLowerCase();
+              final exactWordMatch = matchTerms.any((kw) {
+                final pattern = RegExp(
+                  '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+                );
+                return pattern.hasMatch(titleLower) ||
+                    pattern.hasMatch(textLower);
+              });
+              if (!exactWordMatch && !fuzzyMatch(titleLower, matchTerms)) {
+                continue;
+              }
+
+              final applyLink = resolved.toString();
+              final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+              if (seen.contains(key)) continue;
+              seen.add(key);
+
+              rows.add(
+                ScanResultRow(
+                  company: companyName,
+                  title: title,
+                  companyUrl: careerUri.toString(),
+                  applyLink: applyLink,
+                  location: 'Not specified',
+                  duration: parseDuration(cardText).$1,
+                  deadline: '—',
+                  source: 'Comcast TalentBrew Search HTML',
+                  error: '',
+                ),
+              );
+            }
+
+            if (rows.length == rowsBeforePage) {
+              consecutiveNoHitPages++;
+            } else {
+              consecutiveNoHitPages = 0;
+            }
+
+            if (consecutiveNoHitPages >= 20) {
+              break;
+            }
+          }
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    if (host.contains('careers.cognizant.com') &&
+        careerUri.path.toLowerCase().contains('/jobs')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+        final searchPath = careerUri.path.toLowerCase().contains('/jobs')
+            ? careerUri.path
+            : '/india-en/jobs';
+
+        String normalize(String input) {
+          return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+        }
+
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        final requestedStartPage = int.tryParse(baseQuery['page'] ?? '') ?? 1;
+        final startPage = requestedStartPage < 1 ? 1 : requestedStartPage;
+
+        for (final term in matchTerms) {
+          final termQuery = Map<String, String>.from(baseQuery);
+          if ((termQuery['keyword'] ?? '').trim().isEmpty) {
+            termQuery['keyword'] = term;
+          }
+
+          final firstQuery = Map<String, String>.from(termQuery)
+            ..['page'] = '$startPage';
+          final firstPageUri = Uri.https(
+            careerUri.host,
+            searchPath,
+            firstQuery.isEmpty ? null : firstQuery,
+          );
+
+          final firstResp = await _client
+              .get(
+                firstPageUri,
+                headers: {
+                  'User-Agent':
+                      userAgents[DateTime.now().millisecond %
+                          userAgents.length],
+                  'Accept-Language': 'en-US,en;q=0.9',
+                  'Accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'DNT': '1',
+                },
+              )
+              .timeout(const Duration(seconds: 15));
+
+          if (firstResp.statusCode >= 400 || firstResp.body.trim().isEmpty) {
+            continue;
+          }
+
+          final maxFromLastPageLink = int.tryParse(
+            RegExp(
+                  r'Last\s+page\s+(\d+)',
+                  caseSensitive: false,
+                ).firstMatch(firstResp.body)?.group(1) ??
+                '',
+          );
+          final totalResults = int.tryParse(
+            RegExp(
+                  r'Displaying\s+\d+\s+to\s+\d+\s+of\s+([0-9,]+)\s+matching\s+jobs',
+                  caseSensitive: false,
+                ).firstMatch(firstResp.body)?.group(1)?.replaceAll(',', '') ??
+                '',
+          );
+
+          var discoveredMaxPage = maxFromLastPageLink ?? startPage;
+          if (totalResults != null &&
+              totalResults > 0 &&
+              maxFromLastPageLink == null) {
+            const defaultPageSize = 10;
+            discoveredMaxPage = ((totalResults - 1) ~/ defaultPageSize) + 1;
+          }
+          final cappedMaxPage = discoveredMaxPage > 500
+              ? 500
+              : discoveredMaxPage;
+          var consecutiveNoHitPages = 0;
+
+          for (var page = startPage; page <= cappedMaxPage; page++) {
+            final rowsBeforePage = rows.length;
+            final pageQuery = Map<String, String>.from(termQuery)
+              ..['page'] = '$page';
+            final pageUri = Uri.https(
+              careerUri.host,
+              searchPath,
+              pageQuery.isEmpty ? null : pageQuery,
+            );
+
+            final resp = page == startPage
+                ? firstResp
+                : await _client
+                      .get(
+                        pageUri,
+                        headers: {
+                          'User-Agent':
+                              userAgents[DateTime.now().millisecond %
+                                  userAgents.length],
+                          'Accept-Language': 'en-US,en;q=0.9',
+                          'Accept':
+                              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                          'DNT': '1',
+                        },
+                      )
+                      .timeout(const Duration(seconds: 15));
+
+            if (resp.statusCode >= 400 || resp.body.trim().isEmpty) {
+              continue;
+            }
+
+            final doc = html_parser.parse(resp.body);
+            final anchors = doc.querySelectorAll('a[href*="/india-en/jobs/"]');
+            if (anchors.isEmpty && page > startPage) {
+              break;
+            }
+
+            for (final anchor in anchors) {
+              final href = (anchor.attributes['href'] ?? '').trim();
+              if (href.isEmpty) continue;
+
+              final resolved = pageUri.resolve(href);
+              final segments = resolved.pathSegments
+                  .map((s) => s.trim())
+                  .where((s) => s.isNotEmpty)
+                  .toList();
+              if (segments.length < 4 ||
+                  segments[0].toLowerCase() != 'india-en' ||
+                  segments[1].toLowerCase() != 'jobs') {
+                continue;
+              }
+              final jobId = segments[2];
+              if (!RegExp(r'^\d+$').hasMatch(jobId)) {
+                continue;
+              }
+
+              final title = normalize(anchor.text);
+              if (title.isEmpty) continue;
+
+              final container =
+                  anchor.parent?.parent?.parent ??
+                  anchor.parent?.parent ??
+                  anchor.parent;
+              final cardText = normalize(container?.text ?? '');
+
+              final titleLower = title.toLowerCase();
+              final textLower = cardText.toLowerCase();
+              final exactWordMatch = matchTerms.any((kw) {
+                final pattern = RegExp(
+                  '\\b${RegExp.escape(kw.toLowerCase())}\\b',
+                );
+                return pattern.hasMatch(titleLower) ||
+                    pattern.hasMatch(textLower);
+              });
+              if (!exactWordMatch && !fuzzyMatch(titleLower, matchTerms)) {
+                continue;
+              }
+
+              final applyLink = resolved.toString();
+              final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
+              if (seen.contains(key)) continue;
+              seen.add(key);
+
+              rows.add(
+                ScanResultRow(
+                  company: companyName,
+                  title: title,
+                  companyUrl: careerUri.toString(),
+                  applyLink: applyLink,
+                  location: 'Not specified',
+                  duration: parseDuration(cardText).$1,
+                  deadline: '—',
+                  source: 'Cognizant Careers HTML',
+                  error: '',
+                ),
+              );
+            }
+
+            if (rows.length == rowsBeforePage) {
+              consecutiveNoHitPages++;
+            } else {
+              consecutiveNoHitPages = 0;
+            }
+
+            if (consecutiveNoHitPages >= 20) {
+              break;
+            }
           }
         }
 
@@ -3536,17 +8442,26 @@ class ScraperService {
       }
     }
 
-    if (host.contains('jobs.lever.co')) {
+    if (host.contains('jobs.lever.co') ||
+        host.contains('careers.coupa.com') ||
+        host.contains('careers.cred.club')) {
       try {
-        final segments = careerUri.pathSegments
-            .map((s) => s.trim())
-            .where((s) => s.isNotEmpty)
-            .toList();
-        if (segments.isEmpty) {
-          return const [];
+        late final String board;
+        if (host.contains('careers.coupa.com')) {
+          board = 'coupa';
+        } else if (host.contains('careers.cred.club')) {
+          board = 'cred';
+        } else {
+          final segments = careerUri.pathSegments
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          if (segments.isEmpty) {
+            return const [];
+          }
+          board = segments.first;
         }
 
-        final board = segments.first;
         final uri = Uri.https('api.lever.co', '/v0/postings/$board', {
           'mode': 'json',
         });
@@ -3581,13 +8496,55 @@ class ScraperService {
                   .trim();
           if (title.isEmpty) continue;
 
+          final categories = map['categories'];
+          String categoriesText = '';
+          if (categories is Map) {
+            final parts = categories.values
+                .map((v) => (v ?? '').toString().trim())
+                .where((v) => v.isNotEmpty)
+                .toList();
+            categoriesText = parts.join(' | ');
+          }
+
+          final searchable = [
+            title,
+            description,
+            categoriesText,
+          ].where((p) => p.trim().isNotEmpty).join(' | ').toLowerCase();
+
+          bool hasKeywordVariant(String kw) {
+            final k = kw.toLowerCase().trim();
+            if (k.isEmpty || k.length < 3) return false;
+            if (searchable.contains(k)) return true;
+            if (k.endsWith('y') && k.length > 1) {
+              final stem = k.substring(0, k.length - 1);
+              if (searchable.contains('${stem}ies')) return true;
+            }
+            if (k.endsWith('e') && k.length > 1) {
+              final stem = k.substring(0, k.length - 1);
+              if (searchable.contains('${k}d') ||
+                  searchable.contains('${stem}ing')) {
+                return true;
+              }
+            }
+            return searchable.contains('${k}s') ||
+                searchable.contains('${k}es') ||
+                searchable.contains('${k}ing') ||
+                searchable.contains('${k}ed');
+          }
+
           final titleLower = title.toLowerCase();
-          final descLower = description.toLowerCase();
           final exactWordMatch = matchTerms.any((kw) {
             final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
-            return pattern.hasMatch(titleLower) || pattern.hasMatch(descLower);
+            return pattern.hasMatch(searchable);
           });
-          if (!exactWordMatch && !fuzzyMatch(titleLower, matchTerms)) continue;
+          final variantMatch = matchTerms.any(hasKeywordVariant);
+          if (!exactWordMatch &&
+              !variantMatch &&
+              !fuzzyMatch(titleLower, matchTerms) &&
+              !fuzzyMatch(searchable, matchTerms)) {
+            continue;
+          }
 
           final durationData = parseDuration(description);
 
@@ -3599,7 +8556,6 @@ class ScraperService {
           seen.add(key);
 
           String location = 'Not specified';
-          final categories = map['categories'];
           if (categories is Map) {
             final loc = (categories['location'] ?? '').toString().trim();
             if (loc.isNotEmpty) {
@@ -4118,10 +9074,22 @@ class ScraperService {
       }
     }
 
-    if (host.contains('careers.adyen.com') || host.contains('greenhouse.io')) {
+    if (host.contains('careers.adyen.com') ||
+        host.contains('greenhouse.io') ||
+        host.contains('www.exodus.com') ||
+        (host.contains('copper.co') &&
+            careerUri.path.toLowerCase().contains('/company/careers')) ||
+        (host.contains('consensys.io') &&
+            careerUri.path.toLowerCase().contains('/open-roles'))) {
       try {
         var board = 'adyen';
-        if (!host.contains('careers.adyen.com')) {
+        if (host.contains('copper.co')) {
+          board = 'copperco';
+        } else if (host.contains('consensys.io')) {
+          board = 'consensys';
+        } else if (host.contains('www.exodus.com')) {
+          board = 'exodus54';
+        } else if (!host.contains('careers.adyen.com')) {
           final segments = careerUri.pathSegments
               .map((s) => s.trim())
               .where((s) => s.isNotEmpty)
@@ -4395,20 +9363,69 @@ query ApiJobBoardWithTeams($organizationHostedJobsPageName: String!) {
 
     for (final map in jobs) {
       final title = (map['title'] ?? '').toString().trim();
-      final description =
+      final rawDescription =
           (map['descriptionPlain'] ?? map['descriptionHtml'] ?? '')
               .toString()
               .trim();
       final postingId = (map['id'] ?? '').toString().trim();
       if (title.isEmpty) continue;
 
+      final description =
+          (html_parser
+                      .parse(rawDescription)
+                      .documentElement
+                      ?.text
+                      .replaceAll(RegExp(r'\s+'), ' ')
+                      .trim() ??
+                  rawDescription)
+              .trim();
+
+      final location = (map['location'] ?? map['locationName'] ?? '')
+          .toString()
+          .trim();
+      final department = (map['departmentName'] ?? map['teamName'] ?? '')
+          .toString()
+          .trim();
+      final searchable = [
+        title,
+        description,
+        location,
+        department,
+      ].where((p) => p.trim().isNotEmpty).join(' | ').toLowerCase();
+
+      bool hasKeywordVariant(String kw) {
+        final k = kw.toLowerCase().trim();
+        if (k.isEmpty || k.length < 3) return false;
+        if (searchable.contains(k)) return true;
+        if (k.endsWith('y') && k.length > 1) {
+          final stem = k.substring(0, k.length - 1);
+          if (searchable.contains('${stem}ies')) return true;
+        }
+        if (k.endsWith('e') && k.length > 1) {
+          final stem = k.substring(0, k.length - 1);
+          if (searchable.contains('${k}d') ||
+              searchable.contains('${stem}ing')) {
+            return true;
+          }
+        }
+        return searchable.contains('${k}s') ||
+            searchable.contains('${k}es') ||
+            searchable.contains('${k}ing') ||
+            searchable.contains('${k}ed');
+      }
+
       final titleLower = title.toLowerCase();
-      final descLower = description.toLowerCase();
       final exactWordMatch = matchTerms.any((kw) {
         final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
-        return pattern.hasMatch(titleLower) || pattern.hasMatch(descLower);
+        return pattern.hasMatch(searchable);
       });
-      if (!exactWordMatch && !fuzzyMatch(titleLower, matchTerms)) continue;
+      final variantMatch = matchTerms.any(hasKeywordVariant);
+      if (!exactWordMatch &&
+          !variantMatch &&
+          !fuzzyMatch(titleLower, matchTerms) &&
+          !fuzzyMatch(searchable, matchTerms)) {
+        continue;
+      }
 
       final durationData = parseDuration(description);
 
@@ -4421,10 +9438,6 @@ query ApiJobBoardWithTeams($organizationHostedJobsPageName: String!) {
       final key = '${title.toLowerCase()}|${applyLink.toLowerCase()}';
       if (seen.contains(key)) continue;
       seen.add(key);
-
-      final location = (map['location'] ?? map['locationName'] ?? '')
-          .toString()
-          .trim();
 
       rows.add(
         ScanResultRow(
@@ -4556,6 +9569,95 @@ query ApiJobBoardWithTeams($organizationHostedJobsPageName: String!) {
       dotAll: true,
     ).firstMatch(html);
     return objectMatch?.group(1);
+  }
+
+  String _decodeHtmlAttributeValue(String input) {
+    if (input.isEmpty) return input;
+
+    var out = input
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#34;', '"')
+        .replaceAll('&apos;', "'")
+        .replaceAll('&#39;', "'")
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>');
+
+    out = out.replaceAllMapped(RegExp(r'&#(\d+);'), (m) {
+      final code = int.tryParse(m.group(1) ?? '');
+      return code == null ? m.group(0)! : String.fromCharCode(code);
+    });
+
+    out = out.replaceAllMapped(RegExp(r'&#x([0-9a-fA-F]+);'), (m) {
+      final code = int.tryParse(m.group(1) ?? '', radix: 16);
+      return code == null ? m.group(0)! : String.fromCharCode(code);
+    });
+
+    return out;
+  }
+
+  String? _extractJsonObjectValueByKey(String text, String key) {
+    final keyToken = '"$key"';
+    final keyIndex = text.indexOf(keyToken);
+    if (keyIndex < 0) return null;
+
+    final colonIndex = text.indexOf(':', keyIndex + keyToken.length);
+    if (colonIndex < 0) return null;
+
+    var valueStart = colonIndex + 1;
+    while (valueStart < text.length) {
+      final ch = text.codeUnitAt(valueStart);
+      if (ch == 32 || ch == 10 || ch == 13 || ch == 9) {
+        valueStart++;
+        continue;
+      }
+      break;
+    }
+
+    if (valueStart >= text.length || text[valueStart] != '{') {
+      return null;
+    }
+
+    final valueEnd = _findMatchingObjectEnd(text, valueStart);
+    if (valueEnd < 0) return null;
+    return text.substring(valueStart, valueEnd + 1);
+  }
+
+  int _findMatchingObjectEnd(String text, int objectStart) {
+    var depth = 0;
+    var inString = false;
+    var escaping = false;
+
+    for (var i = objectStart; i < text.length; i++) {
+      final ch = text.codeUnitAt(i);
+
+      if (inString) {
+        if (escaping) {
+          escaping = false;
+        } else if (ch == 92) {
+          escaping = true;
+        } else if (ch == 34) {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (ch == 34) {
+        inString = true;
+        continue;
+      }
+
+      if (ch == 123) {
+        depth++;
+      } else if (ch == 125) {
+        depth--;
+        if (depth == 0) {
+          return i;
+        }
+      }
+    }
+
+    return -1;
   }
 
   List<Map<String, dynamic>> _extractAppleJobs(dynamic root) {

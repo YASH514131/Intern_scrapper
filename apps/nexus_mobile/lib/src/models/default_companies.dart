@@ -35,7 +35,7 @@ const Map<String, String> defaultCompanyUrls = {
   'Wormhole': 'https://wormhole.com/ecosystem/careers',
   'Axelar': 'https://interop-labs-inc.jobs.personio.com/?language=en',
   'Celestia Labs': 'https://jobs.lever.co/celestia/',
-  'EigenLayer': 'https://www.eigenlabs.org/#open-roles',
+  'EigenLayer': 'https://www.eigenlabs.org/careers',
   'Flashbots': 'https://jobs.ashbyhq.com/flashbots.net/',
   'Anyscale': 'https://jobs.ashbyhq.com/anyscale',
   'Aleo': 'https://aleo.org/careers/',
@@ -70,6 +70,9 @@ const Map<String, String> defaultCompanyUrls = {
   'Anchorage Digital': 'https://jobs.lever.co/anchorage',
   'Copper.co': 'https://copper.co/en/company/careers',
   'Fidelity Digital Assets': 'https://jobs.fidelity.com/ie/jobs/',
+  'FinBox': 'https://www.finbox.in/careers',
+  'Finhaat': 'https://www.finhaat.com/careers',
+  'Fisdom': 'https://fisdom.darwinbox.in/ms/candidatev2/main/careers/allJobs',
   'Ledger Enterprise': 'https://careers.ledger.com/jobs/search',
   'Metaco': 'https://lukka.tech/careers/',
   'Taurus SA': 'https://join.com/companies/taurusgroup',
@@ -77,7 +80,8 @@ const Map<String, String> defaultCompanyUrls = {
   'Bakkt':
       'https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=b68a3dbf-9f79-43ee-8390-591298cf1d01&ccId=19000101_000001&lang=en_US',
   'Coinbase Prime': 'https://www.coinbase.com/en-in/careers/positions',
-  'Coinbase': 'https://www.coinbase.com/en-in/careers',
+  'Coinbase':
+      'https://www.coinbase.com/en-in/careers/positions?country=IN&currency=INR&mobile=false&japan_bespoke_content=false&logged_in=false',
   'Kraken': 'https://www.kraken.com/careers',
   'Binance': 'https://jobs.lever.co/binance',
   'Gemini': 'https://www.gemini.com/careers#open-roles',
@@ -103,6 +107,7 @@ const Map<String, String> defaultCompanyUrls = {
   'Trezor (SatoshiLabs)': 'https://satoshilabs.com/careers#open-positions',
   'TRUST wallet': 'https://jobs.ashbyhq.com/trust-wallet',
   'Blockchain.com': 'https://www.blockchain.com/careers/',
+  'e6data': 'https://e6data.zohorecruit.in/jobs/careers',
   'Bullish': 'https://bullish.wd3.myworkdayjobs.com/Bullish',
   'BlackRock': 'https://careers.blackrock.com/search-jobs',
   'blackline':
@@ -111,14 +116,17 @@ const Map<String, String> defaultCompanyUrls = {
       'https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs',
   'Goldman Sachs': 'https://www.goldmansachs.com/careers/students',
   'Citi': 'https://jobs.citi.com/search-jobs',
+  'CWAN': 'https://cwan.com/company/careers/#openings',
   'Standard Chartered':
       'https://jobs.standardchartered.com/content/Search-Result-Page/?employment_type=early_careers&utm_source=careersite',
   'Nomura (Laser Digital)': 'https://laserdigital.com/company/careers/',
-  'DBS Bank': 'https://www.dbs.com/careers/jobs.page?title=Blockchain',
+  'DBS Bank': 'https://dbs.wd3.myworkdayjobs.com/en-GB/DBS_Careers',
   'Visa': 'https://www.visa.co.uk/en_gb/jobs/',
+  'digit':
+      'https://godigit.darwinbox.in/ms/candidatev2/a651fdd75445d1/careers/allJobs',
   'Mastercard': 'https://careers.mastercard.com/us/en/search-results',
   'Franklin Templeton':
-      'https://www.franklintempletoncareers.com/?title=careers',
+      'https://franklintempleton.wd5.myworkdayjobs.com/Primary-External-1',
   'Bank of New York Mellon':
       'https://eofe.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/BNY-Careers/jobs?mode=location',
   'Nasdaq': 'https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site',
@@ -151,7 +159,7 @@ const Map<String, String> defaultCompanyUrls = {
   'Dragonfly': 'https://www.dragonfly.xyz/#careers',
   'Polychain Capital': 'https://job-boards.greenhouse.io/polychaincapital',
   'Coinbase Ventures': 'https://www.coinbase.com/en-in/careers/positions',
-  'Electric Capital': 'https://www.electriccapital.com/jobs',
+  'Electric Capital': 'https://jobs.electriccapital.com/jobs',
   'Variant': 'https://variant.fund/careers/',
   'Multicoin Capital': 'https://jobs.multicoin.capital/companies',
   'Blockchain Capital': 'https://jobs.blockchaincapital.com/jobs',
@@ -173,19 +181,19 @@ const Map<String, String> defaultCompanyUrls = {
   'Zodia Markets': 'https://zodiamarkets.com/careers/',
   'Rakuten Wallet': 'https://rakuten.wd1.myworkdayjobs.com/RakutenRewards',
   'google':
-      'https://www.google.com/about/careers/applications/jobs/results?employment_type=INTERN#!t=jo&jid=127025001&',
+      'https://www.google.com/about/careers/applications/jobs/results?page=190#!t=jo&jid=127025001&',
   'apple': 'https://jobs.apple.com/en-us/search',
   'Microsoft':
       'https://apply.careers.microsoft.com/careers?query=All&start=0&location=India&pid=1970393556803853&sort_by=match&filter_include_remote=1',
   'amazon':
       'https://amazon.jobs/content/en/career-programs/university?country%5B%5D=IN',
-  'facebook': 'https://www.metacareers.com/jobsearch?roles[0]=Internship',
+  'facebook': 'https://www.metacareers.com/jobsearch',
   'netflix': 'https://explore.jobs.netflix.net/careers?domain=netflix.com',
   'ibm': 'https://careers.ibm.com/en_US/careers/OpenJobs',
   'oracle':
       'https://careers.oracle.com/en/sites/jobsearch/jobs?lastSelectedFacet=AttributeChar4&location=India&locationId=300000000106947&selectedFlexFieldsFacets=%22AttributeChar4%7CEmployee%3BStudent%2FIntern%22',
   'Salesforce': 'https://careers.salesforce.com/en/jobs/?search=&country=India',
-  'cisco': 'https://careers.cisco.com/global/en/search-results?keywords=Intern',
+  'cisco': 'https://careers.cisco.com/global/en/search-results',
   'Intel':
       'https://intel.wd1.myworkdayjobs.com/External?locations=1e4a4eb3adf101ab560f6577bf81eacf&locations=1e4a4eb3adf1015ff0865f77bf81e5cf&locations=1e4a4eb3adf101fec7c50d79bf814fd1&locations=1e4a4eb3adf101f44070f976bf8184cf',
   'amd': 'https://careers.amd.com/careers-home/jobs?country=India&page=1',
@@ -204,10 +212,8 @@ const Map<String, String> defaultCompanyUrls = {
   'samsung':
       'https://sec.wd3.myworkdayjobs.com/en-US/Samsung_Careers?locations=189767dd6c9201b802603c83a5292c78&Location_Country=c4f78be1a8f14da0ab49ce1162348a5e&hiringCompany=189767dd6c9201554f3e5312a7290a85',
   'LG electronics': 'https://globalcareers.lge.com/jobs',
-
   'HCL Tech': 'https://careers.hcltech.com/go/NonTPDemand/9558355/',
-  'congnizant':
-      'https://careers.cognizant.com/india-en/jobs/?keyword=&location=India&radius=100&lat=&lng=&cname=India&ccode=IN&pagesize=10#results',
+  'Cognizant': 'https://careers.cognizant.com/india-en/jobs',
   'tech Mahindra': 'https://careers.techmahindra.com/#PostResume',
   'Capegemini':
       'https://www.capgemini.com/careers/join-capgemini/job-search/?keyword=Software%20&country_code=en-in&size=60',
@@ -235,6 +241,7 @@ const Map<String, String> defaultCompanyUrls = {
   'fidelity invest':
       'https://jobs.fidelity.com/in/jobs/?search=&origin=global&lat=&lng=',
   'vanguard': 'https://www.vanguardjobs.com/job-search-results/?level',
+  'flipkart': 'https://www.flipkartcareers.com/jobslist',
   'eBay': 'https://jobs.ebayinc.com/us/en/search-results',
   'shopify': 'https://www.shopify.com/careers/disciplines/engineering-data',
   'Etsy': 'https://careers.etsy.com/jobs/search?query=',
@@ -277,7 +284,7 @@ const Map<String, String> defaultCompanyUrls = {
       'https://www.mondelezinternational.com/careers/jobs/?term=&countrycode=IN',
   'mars': 'https://careers.mars.com/in/en/search-results',
   'general mills':
-      'https://careers.generalmills.com/careers/jobs?location=India&woe=12&regionCode=IN&stretchUnit=MILES&stretch=25&page=1',
+      'https://careers.generalmills.com/careers/jobs?location=India&woe=12&regionCode=IN&stretchUnit=MILES&stretch=25&page=1&limit=100',
   'Kellogg\'s':
       'https://jobs.kellanova.com/search/?createNewAlert=false&q=&locationsearch=&optionsFacetsDD_department=&optionsFacetsDD_country=',
   'danone':
