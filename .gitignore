@@ -30,5 +30,14 @@ Thumbs.db
 **/linux/flutter/ephemeral/
 **/windows/flutter/ephemeral/
 
+# Local config and secrets
+**/key.properties
+**/release.keystore
+**/*.jks
+**/google-services.json
+**/firebase.json
+**/local.properties
+**/.metadata
+
 # Misc
 **/*.iml

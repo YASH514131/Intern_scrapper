@@ -91,16 +91,11 @@ class AnalyticsService {
 
   Future<void> logConfigurationUpdated({
     required int workers,
-    required int maxDuration,
     required int scanLimit,
   }) async {
     await _safeLog(
       name: 'scan_config_updated',
-      parameters: <String, Object>{
-        'workers': workers,
-        'max_duration': maxDuration,
-        'scan_limit': scanLimit,
-      },
+      parameters: <String, Object>{'workers': workers, 'scan_limit': scanLimit},
     );
   }
 

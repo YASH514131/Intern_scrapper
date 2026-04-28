@@ -1,0 +1,1 @@
+Initial public release with job scanning, company list imports, filters, and export support.

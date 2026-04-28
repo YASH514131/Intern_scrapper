@@ -1,0 +1,1 @@
+Scan career pages, filter internship listings, and export results from a mobile-first job scanner app.

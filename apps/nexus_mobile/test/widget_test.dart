@@ -14,6 +14,6 @@ void main() {
     await tester.pumpWidget(const NexusApp());
 
     expect(find.textContaining('NEXUS'), findsWidgets);
-    expect(find.text('Upload CSV/XLSX'), findsOneWidget);
+    expect(find.text('Upload CSV / XLSX'), findsOneWidget);
   });
 }

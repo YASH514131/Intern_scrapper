@@ -21,10 +21,8 @@ class ScanController extends ChangeNotifier {
   bool isScanning = false;
   String appStatus = 'idle';
 
-  String apiUrl = 'http://10.0.2.2:8080';
   String keywords = 'intern, internship, trainee, co-op, apprentice';
   String excludes = 'senior, staff, director, manager, principal';
-  int maxDuration = 6;
   int scanLimit = 239;
   int workers = 10;
 
@@ -54,16 +52,12 @@ class ScanController extends ChangeNotifier {
   int _lastNewAlertCount = 0;
   int _lastErrorAlertCount = 0;
   bool _completionAlertShown = false;
+  bool _pollInFlight = false;
   final CompanyRepository _companyRepository = CompanyRepository();
 
   String? get runId => _runId;
   int get maxScanLimit =>
       uploadedCompanies.isEmpty ? 239 : uploadedCompanies.length.clamp(1, 5000);
-
-  void setApiUrl(String value) {
-    apiUrl = value;
-    notifyListeners();
-  }
 
   void setKeywords(String value) {
     keywords = value;
@@ -72,11 +66,6 @@ class ScanController extends ChangeNotifier {
 
   void setExcludes(String value) {
     excludes = value;
-    notifyListeners();
-  }
-
-  void setMaxDuration(double value) {
-    maxDuration = value.toInt();
     notifyListeners();
   }
 
@@ -170,7 +159,12 @@ class ScanController extends ChangeNotifier {
   Future<void> startScan() async {
     if (uploadedCompanies.isEmpty || isScanning) return;
 
-    final client = NexusApiClient(apiUrl.trim());
+    // Reset any previous polling loop before a new run starts.
+    _pollTimer?.cancel();
+    _pollInFlight = false;
+    _runId = null;
+
+    final client = NexusApiClient('');
     isScanning = true;
     appStatus = 'queued';
     activeStep = 2;
@@ -196,7 +190,6 @@ class ScanController extends ChangeNotifier {
     unawaited(
       AnalyticsService.instance.logConfigurationUpdated(
         workers: workers,
-        maxDuration: maxDuration,
         scanLimit: scanLimit,
       ),
     );
@@ -210,7 +203,6 @@ class ScanController extends ChangeNotifier {
         excludes: excludes,
         scanLimit: scanLimit,
         concurrency: workers.clamp(1, 10),
-        maxDuration: maxDuration,
       );
 
       final run = response['run'] as Map<String, dynamic>;
@@ -220,9 +212,12 @@ class ScanController extends ChangeNotifier {
       notifyListeners();
 
       _pollTimer?.cancel();
-      _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) => poll());
+      _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+        unawaited(poll());
+      });
       await poll();
     } catch (e) {
+      _pollTimer?.cancel();
       isScanning = false;
       appStatus = 'failed';
       _appendLog(
@@ -234,10 +229,12 @@ class ScanController extends ChangeNotifier {
   }
 
   Future<void> poll() async {
+    if (_pollInFlight) return;
     final runId = _runId;
     if (runId == null) return;
 
-    final client = NexusApiClient(apiUrl.trim());
+    _pollInFlight = true;
+    final client = NexusApiClient('');
     try {
       final eventsBody = await client.fetchEvents(runId, _lastEventIndex);
       final incoming = (eventsBody['events'] as List<dynamic>? ?? const [])
@@ -300,6 +297,7 @@ class ScanController extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
+      _pollTimer?.cancel();
       isScanning = false;
       appStatus = 'failed';
       unawaited(AnalyticsService.instance.logScanFailed('poll_exception'));
@@ -308,6 +306,8 @@ class ScanController extends ChangeNotifier {
         message: '[system] polling failed: ${_friendlyNetworkError(e)}',
       );
       notifyListeners();
+    } finally {
+      _pollInFlight = false;
     }
   }
 
@@ -519,8 +519,7 @@ class ScanController extends ChangeNotifier {
     if (!isSocket) return raw;
 
     return '$raw\\n'
-        'Hint: this run uses local in-app scanning.\n'
-        'Check internet connectivity and verify company URLs are reachable.';
+        'Hint: verify internet connectivity and that the target careers pages are reachable.';
   }
 
   void dismissAlert(String id) {

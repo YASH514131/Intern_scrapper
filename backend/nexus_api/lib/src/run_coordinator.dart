@@ -36,11 +36,15 @@ class RunCoordinator {
         final idx = cursor;
         cursor += 1;
         final company = pending[idx];
+        final effectiveTimeoutSeconds = _effectiveTimeoutSeconds(
+          company.url,
+          config.hardTimeoutSeconds,
+        );
 
         try {
           final rows = await scraper
               .scrapeCompany(company, config)
-              .timeout(Duration(seconds: config.hardTimeoutSeconds));
+              .timeout(Duration(seconds: effectiveTimeoutSeconds));
           store.addResults(runId, rows);
           final hits = rows.where((r) => r.bucket == ResultBucket.hit).length;
           if (hits > 0) {
@@ -67,7 +71,7 @@ class RunCoordinator {
               duration: '—',
               deadline: '—',
               source: '—',
-              error: 'Timeout >${config.hardTimeoutSeconds}s',
+              error: 'Timeout >${effectiveTimeoutSeconds}s',
             ),
           ]);
           store.addEvent(
@@ -103,5 +107,18 @@ class RunCoordinator {
 
     store.setStatus(runId, RunStatus.complete);
     store.addEvent(runId, kind: 'info', message: 'Run completed');
+  }
+
+  int _effectiveTimeoutSeconds(String companyUrl, int configuredSeconds) {
+    final parsed = Uri.tryParse(companyUrl);
+    final host = parsed?.host.toLowerCase() ?? '';
+    final path = parsed?.path.toLowerCase() ?? '';
+
+    final isAppleSearch =
+        host.contains('jobs.apple.com') && path.contains('/search');
+    if (isAppleSearch) {
+      return configuredSeconds < 600 ? 600 : configuredSeconds;
+    }
+    return configuredSeconds;
   }
 }

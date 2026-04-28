@@ -1,0 +1,1 @@
+Nexus Jobs Scanner lets you import a company list, scan career pages for internship and early-career job opportunities, filter results by keywords, and export matches as CSV or Excel files. The app supports local scan storage, result export, and optional analytics tracking.

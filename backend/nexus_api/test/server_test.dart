@@ -5,18 +5,46 @@ import 'package:http/http.dart';
 import 'package:test/test.dart';
 
 void main() {
-  final port = '8080';
-  final host = 'http://127.0.0.1:$port';
+  late String port;
+  late String host;
   late Process p;
 
   setUp(() async {
+    final probe = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    port = probe.port.toString();
+    await probe.close();
+    host = 'http://127.0.0.1:$port';
+
     p = await Process.start(
       'dart',
       ['run', 'bin/server.dart'],
       environment: {'PORT': port},
     );
-    // Wait for server to start and print to stdout.
-    await p.stdout.first;
+
+    var ready = false;
+    for (var i = 0; i < 50; i++) {
+      final exitProbe = await p.exitCode.timeout(
+        const Duration(milliseconds: 1),
+        onTimeout: () => -1,
+      );
+      if (exitProbe != -1) break;
+      try {
+        final response = await get(Uri.parse('$host/health'));
+        if (response.statusCode == 200) {
+          ready = true;
+          break;
+        }
+      } catch (_) {
+        // Server is still booting.
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+
+    if (!ready) {
+      final out = await p.stdout.transform(utf8.decoder).join();
+      final err = await p.stderr.transform(utf8.decoder).join();
+      fail('Server did not become ready. stdout=$out stderr=$err');
+    }
   });
 
   tearDown(() => p.kill());

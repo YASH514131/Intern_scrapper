@@ -1,4 +1,4 @@
-package com.example.nexus_mobile
+package com.nexus.jobscanner
 
 import android.appwidget.AppWidgetManager
 import android.content.Context

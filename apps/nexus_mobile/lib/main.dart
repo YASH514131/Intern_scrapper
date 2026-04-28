@@ -1,15 +1,17 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:csv/csv.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -18,8 +20,45 @@ import 'src/services/nexus_api_client.dart';
 import 'src/state/scan_controller.dart';
 import 'src/theme/nexus_theme.dart';
 
+const ScrollPhysics _kNexusSmoothScrollPhysics = RangeMaintainingScrollPhysics(
+  parent: BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+);
+
+class _NexusScrollBehavior extends MaterialScrollBehavior {
+  const _NexusScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.unknown,
+  };
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return _kNexusSmoothScrollPhysics;
+  }
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+}
+
 void main() {
-  runApp(const NexusApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+  };
+  runZonedGuarded(() => runApp(const NexusApp()), (error, stackTrace) {
+    // Keep app alive on unexpected async errors to reduce crash risk in prod.
+  });
 }
 
 class NexusApp extends StatelessWidget {
@@ -37,6 +76,7 @@ class NexusApp extends StatelessWidget {
             themeMode: state.isDarkMode ? ThemeMode.dark : ThemeMode.light,
             darkTheme: nexusTheme(Brightness.dark),
             theme: nexusTheme(Brightness.light),
+            scrollBehavior: const _NexusScrollBehavior(),
             home: const NexusHomePage(),
           );
         },
@@ -110,6 +150,7 @@ class _NexusHomePageState extends State<NexusHomePage> {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
+      drawer: const _NexusInfoDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
@@ -147,7 +188,7 @@ class _NexusHomePageState extends State<NexusHomePage> {
               const SizedBox(width: 10),
               Flexible(
                 child: Text(
-                  '/ Web3 Radar',
+                  '/ Internship Job Scanner',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.dmMono(
@@ -190,6 +231,7 @@ class _NexusHomePageState extends State<NexusHomePage> {
           SafeArea(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              cacheExtent: 1400,
               children: [
                 const SizedBox(height: 8),
                 _StageTabs(
@@ -208,22 +250,8 @@ class _NexusHomePageState extends State<NexusHomePage> {
                       state.setActiveStep(state.activeStep - 1);
                     }
                   },
-                  child: TweenAnimationBuilder<double>(
-                    key: ValueKey<int>(state.activeStep),
-                    tween: Tween<double>(begin: 0.97, end: 1.0),
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, child) {
-                      final forward = state.activeStep >= state.previousStep;
-                      final slideFactor = (1 - value) * (forward ? 14 : -14);
-                      return Opacity(
-                        opacity: value,
-                        child: Transform.translate(
-                          offset: Offset(slideFactor, 0),
-                          child: child,
-                        ),
-                      );
-                    },
+                  child: _StepAppearTransition(
+                    activeStep: state.activeStep,
                     child: IndexedStack(
                       index: state.activeStep - 1,
                       children: [
@@ -310,7 +338,7 @@ class _StageTabs extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 onTap: () => onTap(i + 1),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOut,
                   padding: const EdgeInsets.symmetric(vertical: 11),
                   decoration: BoxDecoration(
@@ -363,6 +391,81 @@ class _StageTabs extends StatelessWidget {
             if (i < labels.length - 1) const SizedBox(width: 4),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _StepAppearTransition extends StatefulWidget {
+  const _StepAppearTransition({required this.activeStep, required this.child});
+
+  final int activeStep;
+  final Widget child;
+
+  @override
+  State<_StepAppearTransition> createState() => _StepAppearTransitionState();
+}
+
+class _StepAppearTransitionState extends State<_StepAppearTransition>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late Animation<double> _fade;
+  late Animation<double> _scale;
+  late Animation<Offset> _slide;
+  late int _lastStep;
+  bool _isForward = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastStep = widget.activeStep;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+      value: 1,
+    );
+    _configureAnimations();
+  }
+
+  @override
+  void didUpdateWidget(covariant _StepAppearTransition oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.activeStep == widget.activeStep) {
+      return;
+    }
+    _isForward = widget.activeStep >= _lastStep;
+    _lastStep = widget.activeStep;
+    _configureAnimations();
+    _controller.forward(from: 0);
+  }
+
+  void _configureAnimations() {
+    final curved = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    _fade = Tween<double>(begin: 0, end: 1).animate(curved);
+    _scale = Tween<double>(begin: 0.986, end: 1).animate(curved);
+    _slide = Tween<Offset>(
+      begin: Offset(_isForward ? 0.04 : -0.04, 0.008),
+      end: Offset.zero,
+    ).animate(curved);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(
+        position: _slide,
+        child: ScaleTransition(scale: _scale, child: widget.child),
       ),
     );
   }
@@ -479,6 +582,167 @@ class _SetupSection extends StatelessWidget {
   }
 }
 
+class _NexusInfoDrawer extends StatelessWidget {
+  const _NexusInfoDrawer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(12),
+          cacheExtent: 360,
+          children: const [
+            ListTile(
+              leading: Icon(Icons.info_outline),
+              title: Text('What Nexus Does'),
+            ),
+            SizedBox(height: 8),
+            _PurposeAndPrivacyCard(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PurposeAndPrivacyCard extends StatelessWidget {
+  const _PurposeAndPrivacyCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return _FrostedCard(
+      padding: const EdgeInsets.all(14),
+      radius: 16,
+      borderColor: isDark ? NexusPalette.darkBorder : NexusPalette.lightBorder,
+      tint: isDark
+          ? const Color(0xA3121728)
+          : NexusPalette.lightPanel.withValues(alpha: 0.88),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'What Nexus Does',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Nexus is a native job aggregation tool for internships. It scans company career pages from your uploaded list, extracts matching roles, and helps you track and export results.',
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Data and Privacy: Nexus does not ask for login credentials and does not collect resume files inside the app. Scan inputs and saved bookmarks are stored locally on your device.',
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _showPrivacyPolicy(context),
+                icon: const Icon(Icons.privacy_tip_outlined),
+                label: const Text('Privacy Policy'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _showDataDisclosure(context),
+                icon: const Icon(Icons.info_outline),
+                label: const Text('Data Handling Details'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyPolicy(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Nexus Privacy Policy',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '1. Nexus does not require account login to use core scanning features.',
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '2. Uploaded company list files are used only to run scans and show results.',
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '3. Saved jobs/bookmarks are stored locally on your device for offline review.',
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '4. Opening a listing redirects you to the original company source page.',
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '5. Nexus does not intentionally collect passwords, resumes, or personal profile data in-app.',
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '6. Data remains on-device unless you explicitly export or share results.',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDataDisclosure(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Nexus Data Disclosure',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 8),
+                Text('1. Company list files are used only for scan execution.'),
+                SizedBox(height: 4),
+                Text(
+                  '2. Saved jobs/bookmarks are stored locally via SharedPreferences.',
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '3. Opening a job sends you to the source company website.',
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '4. Firebase analytics events are app telemetry only and avoid personal identifiers.',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _InlineConfigureCard extends StatelessWidget {
   const _InlineConfigureCard({required this.state});
 
@@ -512,17 +776,6 @@ class _InlineConfigureCard extends StatelessWidget {
             decoration: const InputDecoration(labelText: 'Exclude Keywords'),
           ),
           const SizedBox(height: 12),
-          Text(
-            'Max duration: ${state.maxDuration} months',
-            style: GoogleFonts.dmMono(fontSize: 12, color: NexusPalette.dim),
-          ),
-          Slider(
-            value: state.maxDuration.toDouble(),
-            min: 0,
-            max: 18,
-            divisions: 18,
-            onChanged: state.setMaxDuration,
-          ),
           Text(
             'Companies to scan: ${state.scanLimit}',
             style: GoogleFonts.dmMono(fontSize: 12, color: NexusPalette.dim),
@@ -629,31 +882,176 @@ class _ResultsSection extends StatelessWidget {
       return _FeatureGrid(panel: panel, border: border, textColor: textColor);
     }
 
-    return DefaultTabController(
-      length: 3,
-      child: Column(
-        children: [
-          const TabBar(
-            tabs: [
-              Tab(text: 'Internships'),
-              Tab(text: 'No Listings'),
-              Tab(text: 'Errors'),
-            ],
+    return Column(
+      children: [
+        RepaintBoundary(
+          child: _AnimatedResultsTabs(
+            resultsPanelHeight: resultsPanelHeight,
+            hits: state.hits,
+            misses: state.misses,
+            errors: state.errors,
           ),
-          SizedBox(
-            height: resultsPanelHeight,
-            child: TabBarView(
-              children: [
-                _ResultsList(rows: state.hits, enableSeenFilter: true),
-                _ResultsList(rows: state.misses),
-                _ResultsList(rows: state.errors),
-              ],
+        ),
+        const SizedBox(height: 14),
+        _ExportBar(state: state),
+      ],
+    );
+  }
+}
+
+class _AnimatedResultsTabs extends StatefulWidget {
+  const _AnimatedResultsTabs({
+    required this.resultsPanelHeight,
+    required this.hits,
+    required this.misses,
+    required this.errors,
+  });
+
+  final double resultsPanelHeight;
+  final List<ScanResultRow> hits;
+  final List<ScanResultRow> misses;
+  final List<ScanResultRow> errors;
+
+  @override
+  State<_AnimatedResultsTabs> createState() => _AnimatedResultsTabsState();
+}
+
+class _AnimatedResultsTabsState extends State<_AnimatedResultsTabs>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  int _activeTabIndex = 0;
+  int _previousTabIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      animationDuration: const Duration(milliseconds: 280),
+    );
+    _tabController.addListener(_handleTabControllerChange);
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_handleTabControllerChange);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _handleTabControllerChange() {
+    final next = _tabController.index;
+    if (next == _activeTabIndex) return;
+    if (!mounted) return;
+    setState(() {
+      _previousTabIndex = _activeTabIndex;
+      _activeTabIndex = next;
+    });
+  }
+
+  void _animateToTab(int index) {
+    if (index < 0 || index > 2 || index == _tabController.index) return;
+    _tabController.animateTo(index, curve: Curves.easeOutCubic);
+  }
+
+  Widget _tabContentFor(int index) {
+    switch (index) {
+      case 0:
+        return _ResultsList(
+          key: const PageStorageKey<String>('results-hits-list'),
+          rows: widget.hits,
+          enableSeenFilter: true,
+        );
+      case 1:
+        return _ResultsList(
+          key: const PageStorageKey<String>('results-misses-list'),
+          rows: widget.misses,
+        );
+      case 2:
+      default:
+        return _ResultsList(
+          key: const PageStorageKey<String>('results-errors-list'),
+          rows: widget.errors,
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isForward = _activeTabIndex >= _previousTabIndex;
+
+    return Column(
+      children: [
+        TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Internships'),
+            Tab(text: 'No Listings'),
+            Tab(text: 'Errors'),
+          ],
+        ),
+        SizedBox(
+          height: widget.resultsPanelHeight,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragEnd: (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              if (velocity < -120) {
+                _animateToTab(_tabController.index + 1);
+              } else if (velocity > 120) {
+                _animateToTab(_tabController.index - 1);
+              }
+            },
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              reverseDuration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              layoutBuilder: (currentChild, previousChildren) {
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                );
+              },
+              transitionBuilder: (child, animation) {
+                final curved = CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                  reverseCurve: Curves.easeInCubic,
+                );
+                final position = Tween<Offset>(
+                  begin: Offset(isForward ? 0.045 : -0.045, 0.004),
+                  end: Offset.zero,
+                ).animate(curved);
+                final fade = Tween<double>(
+                  begin: 0.0,
+                  end: 1.0,
+                ).animate(curved);
+                final scale = Tween<double>(
+                  begin: 0.992,
+                  end: 1.0,
+                ).animate(curved);
+
+                return FadeTransition(
+                  opacity: fade,
+                  child: SlideTransition(
+                    position: position,
+                    child: ScaleTransition(scale: scale, child: child),
+                  ),
+                );
+              },
+              child: KeyedSubtree(
+                key: ValueKey<int>(_activeTabIndex),
+                child: _tabContentFor(_activeTabIndex),
+              ),
             ),
           ),
-          const SizedBox(height: 14),
-          _ExportBar(state: state),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -758,7 +1156,7 @@ class _FrostedCard extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
         child: Container(
           width: width,
           padding: padding,
@@ -1005,6 +1403,8 @@ class _TrackerCard extends StatelessWidget {
           SizedBox(
             height: 170,
             child: ListView.builder(
+              key: const PageStorageKey<String>('tracker-company-status-list'),
+              cacheExtent: 640,
               itemCount: state.scanTargets.length,
               itemBuilder: (context, index) {
                 final company = state.scanTargets[index];
@@ -1128,6 +1528,8 @@ class _TerminalCardState extends State<_TerminalCard> {
             firstChild: SizedBox(
               height: 150,
               child: ListView.builder(
+                key: const PageStorageKey<String>('scanner-log-list'),
+                cacheExtent: 500,
                 itemCount: state.logLines.length,
                 itemBuilder: (context, index) {
                   final e = state.logLines[index];
@@ -1178,7 +1580,11 @@ class _TerminalCardState extends State<_TerminalCard> {
 }
 
 class _ResultsList extends StatefulWidget {
-  const _ResultsList({required this.rows, this.enableSeenFilter = false});
+  const _ResultsList({
+    super.key,
+    required this.rows,
+    this.enableSeenFilter = false,
+  });
 
   final List<ScanResultRow> rows;
   final bool enableSeenFilter;
@@ -1189,12 +1595,80 @@ class _ResultsList extends StatefulWidget {
 
 enum _SeenFilter { all, newOnly, seenOnly }
 
-class _ResultsListState extends State<_ResultsList> {
+class _ResultsListState extends State<_ResultsList>
+    with AutomaticKeepAliveClientMixin<_ResultsList> {
   _SeenFilter _filter = _SeenFilter.all;
   String _query = '';
   String _source = 'All';
   String _location = 'All';
   bool _atsOnly = false;
+  bool _offlineOnly = false;
+  Map<String, Map<String, String>> _savedJobs = <String, Map<String, String>>{};
+
+  static const String _savedJobsPrefsKey = 'nexus.saved_jobs.v1';
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadSavedJobs());
+  }
+
+  Future<void> _loadSavedJobs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_savedJobsPrefsKey);
+    if (raw == null || raw.trim().isEmpty) return;
+
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map<String, dynamic>) return;
+    final next = <String, Map<String, String>>{};
+    for (final entry in decoded.entries) {
+      final value = entry.value;
+      if (value is Map<String, dynamic>) {
+        next[entry.key] = value.map(
+          (k, v) => MapEntry(k.toString(), v.toString()),
+        );
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _savedJobs = next;
+    });
+  }
+
+  Future<void> _persistSavedJobs() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_savedJobsPrefsKey, jsonEncode(_savedJobs));
+  }
+
+  String _jobKey(ScanResultRow row) {
+    if (row.applyLink.trim().isNotEmpty) return row.applyLink.trim();
+    return '${row.company}|${row.title}|${row.source}'.toLowerCase();
+  }
+
+  bool _isSaved(ScanResultRow row) => _savedJobs.containsKey(_jobKey(row));
+
+  Future<void> _toggleSaved(ScanResultRow row) async {
+    final key = _jobKey(row);
+    setState(() {
+      if (_savedJobs.containsKey(key)) {
+        _savedJobs.remove(key);
+      } else {
+        _savedJobs[key] = <String, String>{
+          'company': row.company,
+          'title': row.title,
+          'location': row.location,
+          'duration': row.duration,
+          'source': row.source,
+          'applyLink': row.applyLink,
+          'savedAt': DateTime.now().toIso8601String(),
+        };
+      }
+    });
+    await _persistSavedJobs();
+  }
 
   List<String> _sourceOptions() {
     final set = widget.rows.map((r) => r.source).toSet().toList()..sort();
@@ -1251,11 +1725,16 @@ class _ResultsListState extends State<_ResultsList> {
           .toList(growable: false);
     }
 
+    if (_offlineOnly) {
+      rows = rows.where(_isSaved).toList(growable: false);
+    }
+
     return rows;
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     if (widget.rows.isEmpty) return const Center(child: Text('No data'));
     final visible = _visibleRows();
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1310,6 +1789,11 @@ class _ResultsListState extends State<_ResultsList> {
                         selected: _atsOnly,
                         onSelected: (v) => setState(() => _atsOnly = v),
                       ),
+                      FilterChip(
+                        label: Text('Offline saved (${_savedJobs.length})'),
+                        selected: _offlineOnly,
+                        onSelected: (v) => setState(() => _offlineOnly = v),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -1331,6 +1815,7 @@ class _ResultsListState extends State<_ResultsList> {
                           children: [
                             DropdownButtonFormField<String>(
                               value: _source,
+                              isExpanded: true,
                               style: dropdownText,
                               dropdownColor: dropdownBg,
                               iconEnabledColor: dropdownIcon,
@@ -1355,6 +1840,7 @@ class _ResultsListState extends State<_ResultsList> {
                             const SizedBox(height: 10),
                             DropdownButtonFormField<String>(
                               value: _location,
+                              isExpanded: true,
                               style: dropdownText,
                               dropdownColor: dropdownBg,
                               iconEnabledColor: dropdownIcon,
@@ -1385,6 +1871,7 @@ class _ResultsListState extends State<_ResultsList> {
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               value: _source,
+                              isExpanded: true,
                               style: dropdownText,
                               dropdownColor: dropdownBg,
                               iconEnabledColor: dropdownIcon,
@@ -1411,6 +1898,7 @@ class _ResultsListState extends State<_ResultsList> {
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               value: _location,
+                              isExpanded: true,
                               style: dropdownText,
                               dropdownColor: dropdownBg,
                               iconEnabledColor: dropdownIcon,
@@ -1446,12 +1934,14 @@ class _ResultsListState extends State<_ResultsList> {
         else
           Expanded(
             child: ListView.separated(
+              cacheExtent: 1000,
               itemCount: visible.length,
               separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, i) {
                 final r = visible[i];
                 return ListTile(
                   onTap: r.applyLink.isEmpty ? null : () => _open(r.applyLink),
+                  onLongPress: () => _showOfflineSheet(r),
                   title: Row(
                     children: [
                       Expanded(child: Text(r.title)),
@@ -1462,12 +1952,86 @@ class _ResultsListState extends State<_ResultsList> {
                     ],
                   ),
                   subtitle: Text('${r.company} - ${r.location} - ${r.source}'),
-                  trailing: Text(r.duration),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: _isSaved(r)
+                            ? 'Remove saved offline copy'
+                            : 'Save for offline reading',
+                        onPressed: () => _toggleSaved(r),
+                        icon: Icon(
+                          _isSaved(r)
+                              ? Icons.bookmark_rounded
+                              : Icons.bookmark_border_rounded,
+                          color: _isSaved(r)
+                              ? NexusPalette.green
+                              : NexusPalette.dim,
+                        ),
+                      ),
+                      Text(r.duration),
+                    ],
+                  ),
                 );
               },
             ),
           ),
       ],
+    );
+  }
+
+  void _showOfflineSheet(ScanResultRow row) {
+    final saved = _savedJobs[_jobKey(row)];
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(row.title, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 6),
+                Text('${row.company} - ${row.location}'),
+                const SizedBox(height: 8),
+                Text('Source: ${row.source}'),
+                const SizedBox(height: 8),
+                Text(
+                  saved == null
+                      ? 'Not saved yet. Tap bookmark to keep this job available in Offline Saved mode.'
+                      : 'Saved at: ${saved['savedAt'] ?? '-'}',
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _toggleSaved(row),
+                      icon: Icon(
+                        _isSaved(row)
+                            ? Icons.bookmark_remove_outlined
+                            : Icons.bookmark_add_outlined,
+                      ),
+                      label: Text(_isSaved(row) ? 'Unsave' : 'Save offline'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: row.applyLink.isEmpty
+                          ? null
+                          : () => _open(row.applyLink),
+                      icon: const Icon(Icons.open_in_new),
+                      label: const Text('Open source page'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1821,7 +2385,7 @@ class _ExportBar extends StatelessWidget {
   Future<void> _shareAll(ScanController state) async {
     final runId = state.runId;
     if (runId == null) return;
-    final client = NexusApiClient(state.apiUrl.trim());
+    final client = NexusApiClient('');
     final csv = await client.downloadAllCsv(runId);
     await _shareTextFile(csv, 'nexus_all.csv');
   }

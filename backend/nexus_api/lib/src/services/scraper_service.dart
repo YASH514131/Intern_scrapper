@@ -623,7 +623,9 @@ class ScraperService {
 
           final candidates = <String>{normalizedTerm};
           if (normalizedTerm.endsWith('s') && normalizedTerm.length > 1) {
-            candidates.add(normalizedTerm.substring(0, normalizedTerm.length - 1));
+            candidates.add(
+              normalizedTerm.substring(0, normalizedTerm.length - 1),
+            );
           } else {
             candidates.add('${normalizedTerm}s');
           }
@@ -645,7 +647,8 @@ class ScraperService {
         final requestedMaxPage = int.tryParse(
           careerUri.queryParameters['page'] ?? '',
         );
-        final maxGooglePages = (requestedMaxPage != null && requestedMaxPage > 0)
+        final maxGooglePages =
+            (requestedMaxPage != null && requestedMaxPage > 0)
             ? (requestedMaxPage > maxGooglePageCap
                   ? maxGooglePageCap
                   : requestedMaxPage)
@@ -658,8 +661,9 @@ class ScraperService {
                 .get(
                   uri,
                   headers: {
-                    'User-Agent': userAgents[
-                        DateTime.now().millisecond % userAgents.length],
+                    'User-Agent':
+                        userAgents[DateTime.now().millisecond %
+                            userAgents.length],
                     'Accept-Language': 'en-US,en;q=0.9',
                     'Accept':
                         'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -691,10 +695,7 @@ class ScraperService {
           for (var page = startPage; page <= endPage; page++) {
             batchUris.add(
               baseUri.replace(
-                queryParameters: {
-                  ...baseUri.queryParameters,
-                  'page': '$page',
-                },
+                queryParameters: {...baseUri.queryParameters, 'page': '$page'},
               ),
             );
           }
@@ -2214,8 +2215,8 @@ class ScraperService {
             break;
           }
 
-          if (totalHits != null && totalHits! > 0) {
-            final maxOffset = totalHits! - pageSize;
+          if (totalHits != null && totalHits > 0) {
+            final maxOffset = totalHits - pageSize;
             if (offset >= maxOffset) {
               break;
             }
@@ -2388,8 +2389,8 @@ class ScraperService {
             break;
           }
 
-          if (totalHits != null && totalHits! > 0) {
-            final maxOffset = totalHits! - pageSize;
+          if (totalHits != null && totalHits > 0) {
+            final maxOffset = totalHits - pageSize;
             if (offset >= maxOffset) {
               break;
             }
@@ -3699,8 +3700,8 @@ class ScraperService {
             }
 
             total ??= int.tryParse('${decoded['total'] ?? ''}');
-            if (total != null && total! > 0) {
-              final computedMaxPage = ((total! - 1) ~/ pageSize) + 1;
+            if (total != null && total > 0) {
+              final computedMaxPage = ((total - 1) ~/ pageSize) + 1;
               if (computedMaxPage < maxPage) {
                 maxPage = computedMaxPage;
               }
@@ -3893,7 +3894,7 @@ class ScraperService {
             }
 
             offset += limit;
-            if (total != null && offset >= total!) {
+            if (total != null && offset >= total) {
               break;
             }
           }
@@ -3931,7 +3932,7 @@ class ScraperService {
 
           final pageUri = Uri.https(
             careerUri.host,
-            careerUri.path,
+            searchPath,
             qp.isEmpty ? null : qp,
           );
 
@@ -4967,7 +4968,7 @@ class ScraperService {
               break;
             }
 
-            if (total != null && total! > 0 && offset + jobs.length > total!) {
+            if (total != null && total > 0 && offset + jobs.length > total) {
               break;
             }
             if (jobs.length < limit) {
@@ -5126,7 +5127,7 @@ class ScraperService {
               break;
             }
 
-            if (total != null && total! > 0 && offset + jobs.length > total!) {
+            if (total != null && total > 0 && offset + jobs.length > total) {
               break;
             }
             if (jobs.length < limit) {
@@ -5141,148 +5142,144 @@ class ScraperService {
       } catch (_) {
         return const [];
       }
-      if (host.contains('coinbase.com') &&
-          careerUri.path.toLowerCase().contains('/careers/positions')) {
-        try {
-          final rows = <ScanResultRow>[];
-          final seen = <String>{};
-          final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
+    }
 
-          final baseQuery = Map<String, String>.from(careerUri.queryParameters);
-          final requestedCountry = (baseQuery['country'] ?? '')
-              .trim()
-              .toLowerCase();
-          const countryNameByCode = <String, String>{
-            'in': 'india',
-            'us': 'usa',
-            'gb': 'uk',
-            'uk': 'uk',
-            'sg': 'singapore',
-            'ca': 'canada',
-            'ae': 'united arab emirates',
-            'au': 'australia',
-            'br': 'brazil',
-            'cy': 'cyprus',
-            'ie': 'ireland',
-            'lu': 'luxembourg',
-          };
-          final requestedCountryName =
-              countryNameByCode[requestedCountry] ?? requestedCountry;
+    if (host.contains('coinbase.com') &&
+        careerUri.path.toLowerCase().contains('/careers/positions')) {
+      try {
+        final rows = <ScanResultRow>[];
+        final seen = <String>{};
+        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
 
-          final apiUri = Uri.https(
-            'boards-api.greenhouse.io',
-            '/v1/boards/coinbase/jobs',
-            {'content': 'true'},
-          );
+        final baseQuery = Map<String, String>.from(careerUri.queryParameters);
+        final requestedCountry = (baseQuery['country'] ?? '')
+            .trim()
+            .toLowerCase();
+        const countryNameByCode = <String, String>{
+          'in': 'india',
+          'us': 'usa',
+          'gb': 'uk',
+          'uk': 'uk',
+          'sg': 'singapore',
+          'ca': 'canada',
+          'ae': 'united arab emirates',
+          'au': 'australia',
+          'br': 'brazil',
+          'cy': 'cyprus',
+          'ie': 'ireland',
+          'lu': 'luxembourg',
+        };
+        final requestedCountryName =
+            countryNameByCode[requestedCountry] ?? requestedCountry;
 
-          final response = await _client
-              .get(
-                apiUri,
-                headers: {
-                  'user-agent':
-                      userAgents[DateTime.now().millisecond %
-                          userAgents.length],
-                  'accept': 'application/json, text/plain, */*',
-                  'accept-language': 'en-US,en;q=0.9',
-                  'referer': careerUri.toString(),
-                },
-              )
-              .timeout(const Duration(seconds: 20));
+        final apiUri = Uri.https(
+          'boards-api.greenhouse.io',
+          '/v1/boards/coinbase/jobs',
+          {'content': 'true'},
+        );
 
-          if (response.statusCode >= 400 || response.body.trim().isEmpty) {
-            return const [];
-          }
+        final response = await _client
+            .get(
+              apiUri,
+              headers: {
+                'user-agent':
+                    userAgents[DateTime.now().millisecond % userAgents.length],
+                'accept': 'application/json, text/plain, */*',
+                'accept-language': 'en-US,en;q=0.9',
+                'referer': careerUri.toString(),
+              },
+            )
+            .timeout(const Duration(seconds: 20));
 
-          final decoded = jsonDecode(response.body);
-          if (decoded is! Map || decoded['jobs'] is! List) {
-            return const [];
-          }
-
-          bool matchesRequestedCountry(String locationLower) {
-            if (requestedCountry.isEmpty) return true;
-            if (locationLower.contains(requestedCountryName)) return true;
-            if (requestedCountry.length == 2) {
-              final pattern = RegExp(
-                '\\b${RegExp.escape(requestedCountry)}\\b',
-              );
-              return pattern.hasMatch(locationLower);
-            }
-            return false;
-          }
-
-          for (final item in (decoded['jobs'] as List).whereType<Map>()) {
-            final map = item.map((k, v) => MapEntry(k.toString(), v));
-
-            final title = (map['title'] ?? '').toString().trim();
-            if (title.isEmpty) continue;
-
-            final locationObj = map['location'];
-            final location = locationObj is Map
-                ? (locationObj['name'] ?? '').toString().trim()
-                : '';
-            final locationLower = location.toLowerCase();
-            if (!matchesRequestedCountry(locationLower)) {
-              continue;
-            }
-
-            final rawContent = (map['content'] ?? '').toString();
-            final normalizedHtml = rawContent
-                .replaceAll('&lt;', '<')
-                .replaceAll('&gt;', '>')
-                .replaceAll('&amp;', '&');
-            final contentText =
-                html_parser.parse(normalizedHtml).documentElement?.text ??
-                rawContent;
-
-            final searchable = [
-              title,
-              location,
-              contentText,
-            ].where((p) => p.trim().isNotEmpty).join(' | ').toLowerCase();
-
-            final exactWordMatch = matchTerms.any((kw) {
-              final pattern = RegExp(
-                '\\b${RegExp.escape(kw.toLowerCase())}\\b',
-              );
-              return pattern.hasMatch(searchable);
-            });
-            if (!exactWordMatch &&
-                !fuzzyMatch(title.toLowerCase(), matchTerms) &&
-                !fuzzyMatch(contentText.toLowerCase(), matchTerms)) {
-              continue;
-            }
-
-            final applyLink = (map['absolute_url'] ?? map['url'] ?? '')
-                .toString()
-                .trim();
-            final resolvedApplyLink = applyLink.isNotEmpty
-                ? applyLink
-                : careerUri.toString();
-
-            final key =
-                '${title.toLowerCase()}|${resolvedApplyLink.toLowerCase()}';
-            if (seen.contains(key)) continue;
-            seen.add(key);
-
-            rows.add(
-              ScanResultRow(
-                company: companyName,
-                title: title,
-                companyUrl: careerUri.toString(),
-                applyLink: resolvedApplyLink,
-                location: location.isEmpty ? 'Not specified' : location,
-                duration: parseDuration('$title $contentText').$1,
-                deadline: '—',
-                source: 'Coinbase Greenhouse API',
-                error: '',
-              ),
-            );
-          }
-
-          return rows;
-        } catch (_) {
+        if (response.statusCode >= 400 || response.body.trim().isEmpty) {
           return const [];
         }
+
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map || decoded['jobs'] is! List) {
+          return const [];
+        }
+
+        bool matchesRequestedCountry(String locationLower) {
+          if (requestedCountry.isEmpty) return true;
+          if (locationLower.contains(requestedCountryName)) return true;
+          if (requestedCountry.length == 2) {
+            final pattern = RegExp('\\b${RegExp.escape(requestedCountry)}\\b');
+            return pattern.hasMatch(locationLower);
+          }
+          return false;
+        }
+
+        for (final item in (decoded['jobs'] as List).whereType<Map>()) {
+          final map = item.map((k, v) => MapEntry(k.toString(), v));
+
+          final title = (map['title'] ?? '').toString().trim();
+          if (title.isEmpty) continue;
+
+          final locationObj = map['location'];
+          final location = locationObj is Map
+              ? (locationObj['name'] ?? '').toString().trim()
+              : '';
+          final locationLower = location.toLowerCase();
+          if (!matchesRequestedCountry(locationLower)) {
+            continue;
+          }
+
+          final rawContent = (map['content'] ?? '').toString();
+          final normalizedHtml = rawContent
+              .replaceAll('&lt;', '<')
+              .replaceAll('&gt;', '>')
+              .replaceAll('&amp;', '&');
+          final contentText =
+              html_parser.parse(normalizedHtml).documentElement?.text ??
+              rawContent;
+
+          final searchable = [
+            title,
+            location,
+            contentText,
+          ].where((p) => p.trim().isNotEmpty).join(' | ').toLowerCase();
+
+          final exactWordMatch = matchTerms.any((kw) {
+            final pattern = RegExp('\\b${RegExp.escape(kw.toLowerCase())}\\b');
+            return pattern.hasMatch(searchable);
+          });
+          if (!exactWordMatch &&
+              !fuzzyMatch(title.toLowerCase(), matchTerms) &&
+              !fuzzyMatch(contentText.toLowerCase(), matchTerms)) {
+            continue;
+          }
+
+          final applyLink = (map['absolute_url'] ?? map['url'] ?? '')
+              .toString()
+              .trim();
+          final resolvedApplyLink = applyLink.isNotEmpty
+              ? applyLink
+              : careerUri.toString();
+
+          final key =
+              '${title.toLowerCase()}|${resolvedApplyLink.toLowerCase()}';
+          if (seen.contains(key)) continue;
+          seen.add(key);
+
+          rows.add(
+            ScanResultRow(
+              company: companyName,
+              title: title,
+              companyUrl: careerUri.toString(),
+              applyLink: resolvedApplyLink,
+              location: location.isEmpty ? 'Not specified' : location,
+              duration: parseDuration('$title $contentText').$1,
+              deadline: '—',
+              source: 'Coinbase Greenhouse API',
+              error: '',
+            ),
+          );
+        }
+
+        return rows;
+      } catch (_) {
+        return const [];
       }
     }
 
@@ -7219,7 +7216,6 @@ class ScraperService {
       try {
         final rows = <ScanResultRow>[];
         final seen = <String>{};
-        final matchTerms = keywords.isEmpty ? const ['intern'] : keywords;
         final queryTerms = keywords.isEmpty ? const ['intern'] : keywords;
         const pageSize = 50;
 

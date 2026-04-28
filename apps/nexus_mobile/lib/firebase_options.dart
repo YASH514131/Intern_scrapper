@@ -26,21 +26,19 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyC_iaLU8Q0ZFh7TVL3CRzlPLhRUpCDq1MM',
-    appId: '1:943101881292:android:9d70abb556f75652d78b69',
-    messagingSenderId: '943101881292',
-    projectId: 'nexus-2fa13',
-    storageBucket: 'nexus-2fa13.firebasestorage.app',
+    apiKey: 'YOUR_ANDROID_API_KEY',
+    appId: 'YOUR_ANDROID_APP_ID',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    storageBucket: 'YOUR_STORAGE_BUCKET',
   );
 
-  // Replace these placeholders by running: flutterfire configure
-
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBE221nkK0VjE_ir5_cKnu2SX-W2_elwAo',
-    appId: '1:943101881292:ios:415703398717ace1d78b69',
-    messagingSenderId: '943101881292',
-    projectId: 'nexus-2fa13',
-    storageBucket: 'nexus-2fa13.firebasestorage.app',
-    iosBundleId: 'com.example.nexusMobile',
+    apiKey: 'YOUR_IOS_API_KEY',
+    appId: 'YOUR_IOS_APP_ID',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    storageBucket: 'YOUR_STORAGE_BUCKET',
+    iosBundleId: 'YOUR_IOS_BUNDLE_ID',
   );
 }

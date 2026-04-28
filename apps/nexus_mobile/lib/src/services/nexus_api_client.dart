@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/company_row.dart';
+import '../local_scraper/models.dart' as local_models;
+import '../local_scraper/services/scraper_service.dart' as local_services;
 
 class NexusApiClient {
   NexusApiClient(this.baseUrl);
@@ -32,6 +34,8 @@ class NexusApiClient {
       <String, Future<void>>{};
 
   static Database? _db;
+  static final local_services.ScraperService _fullScraperEngine =
+      local_services.ScraperService(client: http.Client(), callsPerSecond: 0.8);
 
   Future<Map<String, dynamic>> startRun({
     required List<CompanyRow> companies,
@@ -39,24 +43,40 @@ class NexusApiClient {
     required String excludes,
     required int scanLimit,
     required int concurrency,
-    required num maxDuration,
   }) async {
+    final selected = companies
+        .take(scanLimit)
+        .where((c) => c.name.trim().isNotEmpty && c.url.trim().isNotEmpty)
+        .toList(growable: false);
+    if (selected.isEmpty) {
+      throw Exception('No valid companies were provided for this run.');
+    }
+
     await _ensureStoreLoaded();
     await _ensureDb();
 
-    final id = _newRunId();
     final run = _LocalRunState(
-      id: id,
-      companies: companies.take(scanLimit).toList(growable: false),
+      id: _newRunId(),
+      companies: selected,
       keywords: _splitCsv(keywords),
       excludes: _splitCsv(excludes),
-      maxDurationMonths: maxDuration.toInt(),
-      scanLimit: scanLimit,
-      concurrency: concurrency,
+      scanLimit: selected.length,
+      concurrency: min(max(1, concurrency), 10),
     );
-    _runs[id] = run;
+    _runs[run.id] = run;
+    _addEvent(
+      run,
+      'info',
+      '[system] run queued (${run.companies.length} companies)',
+    );
 
-    unawaited(_executeRun(run));
+    unawaited(
+      _executeRun(run).catchError((Object error, StackTrace stackTrace) {
+        run.status = 'failed';
+        run.completedAt = DateTime.now();
+        _addEvent(run, 'error', '[system] local engine failed: $error');
+      }),
+    );
 
     return <String, dynamic>{
       'run': <String, dynamic>{
@@ -70,11 +90,12 @@ class NexusApiClient {
   Future<Map<String, dynamic>> fetchEvents(String runId, int after) async {
     final run = _runs[runId];
     if (run == null) {
-      throw Exception('Run not found: $runId');
+      throw Exception('Unknown run id: $runId');
     }
 
     final events = run.events
-        .where((e) => (e['index'] as int) > after)
+        .where((event) => (event['index'] as int? ?? -1) > after)
+        .map((event) => Map<String, dynamic>.from(event))
         .toList(growable: false);
 
     return <String, dynamic>{'status': run.status, 'events': events};
@@ -83,7 +104,7 @@ class NexusApiClient {
   Future<Map<String, dynamic>> fetchResults(String runId) async {
     final run = _runs[runId];
     if (run == null) {
-      throw Exception('Run not found: $runId');
+      throw Exception('Unknown run id: $runId');
     }
 
     final rows = await _readRunRows(runId);
@@ -98,11 +119,11 @@ class NexusApiClient {
         .length;
 
     return <String, dynamic>{
-      'run': <String, dynamic>{'id': run.id, 'status': run.status},
+      'status': run.status,
       'results': rows,
       'metrics': <String, dynamic>{
-        'total': run.companies.length,
         'scanned': run.processedCompanies,
+        'total': run.companies.length,
         'hits': hitCount,
         'misses': missCount,
         'errors': errorCount,
@@ -113,42 +134,36 @@ class NexusApiClient {
   }
 
   Future<String> downloadAllCsv(String runId) async {
-    final run = _runs[runId];
-    if (run == null) {
-      throw Exception('Run not found: $runId');
-    }
-
-    final rowsData = await _readRunRows(runId);
-    final rows = <List<String>>[
-      <String>[
+    final rows = await _readRunRows(runId);
+    final lines = <String>[
+      _toCsvLine(<String>[
         'Company',
-        'Bucket',
         'Title',
         'Location',
         'Duration',
         'Source',
-        'ApplyLink',
+        'Apply Link',
+        'Bucket',
+        'Is New',
+        'Seen Before',
         'Error',
-        'IsNew',
-        'IsSeenBefore',
-      ],
-      ...rowsData.map(
-        (r) => <String>[
-          (r['company'] ?? '').toString(),
-          (r['bucket'] ?? '').toString(),
-          (r['title'] ?? '').toString(),
-          (r['location'] ?? '').toString(),
-          (r['duration'] ?? '').toString(),
-          (r['source'] ?? '').toString(),
-          (r['applyLink'] ?? '').toString(),
-          (r['error'] ?? '').toString(),
-          (r['isNew'] ?? false).toString(),
-          (r['isSeenBefore'] ?? false).toString(),
-        ],
+      ]),
+      ...rows.map(
+        (row) => _toCsvLine(<String>[
+          (row['company'] ?? '').toString(),
+          (row['title'] ?? '').toString(),
+          (row['location'] ?? '').toString(),
+          (row['duration'] ?? '').toString(),
+          (row['source'] ?? '').toString(),
+          (row['applyLink'] ?? '').toString(),
+          (row['bucket'] ?? '').toString(),
+          ((row['isNew'] ?? false) == true) ? 'yes' : 'no',
+          ((row['isSeenBefore'] ?? false) == true) ? 'yes' : 'no',
+          (row['error'] ?? '').toString(),
+        ]),
       ),
     ];
-
-    return rows.map(_toCsvLine).join('\n');
+    return lines.join('\n');
   }
 
   Future<void> _executeRun(_LocalRunState run) async {
@@ -252,11 +267,144 @@ class NexusApiClient {
     required Set<String> runInsertedKeys,
   }) async {
     final normalizedUrl = _normalizeUrl(company.url);
+    final atsType = _detectAtsType(normalizedUrl).name;
+
+    final effectiveKeywords = keywords.isEmpty
+        ? local_models.ScanConfig.defaults().keywords
+        : keywords;
+    final engineConfig = local_models.ScanConfig(
+      keywords: effectiveKeywords,
+      excludeKeywords: excludes,
+      scanLimit: 1,
+      concurrency: 1,
+      enableJs: false,
+      hardTimeoutSeconds: 24,
+    );
+
+    try {
+      final rows = await _fullScraperEngine
+          .scrapeCompany(
+            local_models.CompanyInput(name: company.name, url: normalizedUrl),
+            engineConfig,
+          )
+          .timeout(Duration(seconds: engineConfig.hardTimeoutSeconds + 5));
+
+      var hitCount = 0;
+      var errorCount = 0;
+      var preview = 'opening';
+      var firstError = '';
+      var errorSource = _hostOf(normalizedUrl);
+
+      for (final row in rows) {
+        switch (row.bucket) {
+          case local_models.ResultBucket.hit:
+            final title = row.title.trim();
+            if (title.isEmpty || title == '—') {
+              continue;
+            }
+            final inserted = await _insertHit(
+              runId: runId,
+              company: company.name,
+              title: title,
+              location: row.location.trim().isEmpty
+                  ? 'Not specified'
+                  : row.location.trim(),
+              source: row.source.trim().isEmpty
+                  ? _hostOf(normalizedUrl)
+                  : row.source.trim(),
+              applyLink: row.applyLink.trim().isEmpty
+                  ? normalizedUrl
+                  : row.applyLink.trim(),
+              duration: row.duration.trim(),
+              atsType: atsType,
+              historicalSeen: historicalSeen,
+              runInsertedKeys: runInsertedKeys,
+            );
+            if (inserted) {
+              hitCount++;
+              preview = title;
+            }
+            break;
+          case local_models.ResultBucket.error:
+            errorCount++;
+            if (firstError.isEmpty) {
+              firstError = row.error.trim().isEmpty
+                  ? 'Local scraper failed'
+                  : row.error.trim();
+            }
+            if (row.source.trim().isNotEmpty) {
+              errorSource = row.source.trim();
+            }
+            break;
+          case local_models.ResultBucket.miss:
+            break;
+        }
+      }
+
+      if (hitCount > 0) {
+        return _ScanSummary.hit(hitCount, preview);
+      }
+
+      if (errorCount > 0) {
+        await _insertResultRow(
+          runId: runId,
+          row: _error(
+            company: company.name,
+            source: errorSource,
+            applyLink: normalizedUrl,
+            error: firstError,
+            atsType: atsType,
+          ),
+        );
+        return _ScanSummary.error(firstError);
+      }
+
+      if (rows.isEmpty) {
+        return _scanCompanyAndStoreLegacy(
+          runId: runId,
+          company: company,
+          keywords: keywords,
+          excludes: excludes,
+          historicalSeen: historicalSeen,
+          runInsertedKeys: runInsertedKeys,
+        );
+      }
+
+      await _insertResultRow(
+        runId: runId,
+        row: _miss(
+          company.name,
+          _hostOf(normalizedUrl),
+          normalizedUrl,
+          atsType: atsType,
+        ),
+      );
+      return _ScanSummary.miss();
+    } catch (_) {
+      return _scanCompanyAndStoreLegacy(
+        runId: runId,
+        company: company,
+        keywords: keywords,
+        excludes: excludes,
+        historicalSeen: historicalSeen,
+        runInsertedKeys: runInsertedKeys,
+      );
+    }
+  }
+
+  Future<_ScanSummary> _scanCompanyAndStoreLegacy({
+    required String runId,
+    required CompanyRow company,
+    required List<String> keywords,
+    required List<String> excludes,
+    required Set<String> historicalSeen,
+    required Set<String> runInsertedKeys,
+  }) async {
+    final normalizedUrl = _normalizeUrl(company.url);
     final uri = Uri.parse(normalizedUrl);
     final ats = _detectAtsType(normalizedUrl);
 
-    // First try scraping the exact URL provided by the user. If that works,
-    // avoid forcing ATS endpoint translation that can create false 404 errors.
+    // Fallback path kept for resilience if the full engine times out/fails.
     if (ats != _AtsType.custom) {
       final directSummary = await _scanCustom(
         runId: runId,
@@ -1163,6 +1311,7 @@ class NexusApiClient {
     required String location,
     required String source,
     required String applyLink,
+    String? duration,
     required String atsType,
     required Set<String> historicalSeen,
     required Set<String> runInsertedKeys,
@@ -1186,6 +1335,7 @@ class NexusApiClient {
           location: location,
           source: source,
           applyLink: applyLink,
+          duration: duration,
           atsType: atsType,
         ),
         'isSeenBefore': seenBefore,
@@ -1785,6 +1935,7 @@ class NexusApiClient {
     required String location,
     required String source,
     required String applyLink,
+    String? duration,
     required String atsType,
   }) {
     return <String, dynamic>{
@@ -1792,7 +1943,9 @@ class NexusApiClient {
       'bucket': 'hit',
       'title': title,
       'location': location,
-      'duration': '${DateTime.now().year} intake',
+      'duration': (duration == null || duration.trim().isEmpty)
+          ? '${DateTime.now().year} intake'
+          : duration,
       'source': source,
       'applyLink': applyLink,
       'error': '',
@@ -1937,7 +2090,6 @@ class _LocalRunState {
     required this.companies,
     required this.keywords,
     required this.excludes,
-    required this.maxDurationMonths,
     required this.scanLimit,
     required this.concurrency,
   });
@@ -1950,7 +2102,6 @@ class _LocalRunState {
   final List<CompanyRow> companies;
   final List<String> keywords;
   final List<String> excludes;
-  final int maxDurationMonths;
   final int scanLimit;
   final int concurrency;
 
