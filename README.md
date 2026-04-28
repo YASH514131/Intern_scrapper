@@ -79,9 +79,4 @@ The app privacy policy is stored in `docs/privacy_policy.md`.
 - `docs/privacy_policy.md` — Privacy policy for app submission
 - `.github/workflows/release.yml` — GitHub release automation
 
-## Next steps before publishing
 
-- Confirm the GitHub repo is public and visible.
-- Update `docs/privacy_policy.md` with a real contact email.
-- Add professional screenshots and banners to `docs/screenshots/` or GitHub releases.
-- Create a version tag such as `v1.1.0` and push it to GitHub.
